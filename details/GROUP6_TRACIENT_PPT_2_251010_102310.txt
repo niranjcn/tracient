@@ -1,0 +1,219 @@
+Department of Computer Science and Engineering
+St. Thomas College of Engineering and Technology
+Mattannur
+Block Chain Based Income Traceabilty
+System for Equitable Welfare Distribution
+Authors:
+DEVATHMAJ A KALIYATHAN (STM22CS021)
+MUHAMMED JINAS T P (STM22CS038)
+NEVIN R PRADEEP (STM22CS043)
+NIRANJ C N (STM22CS044)Supervisor:
+Mr. Jithin S
+Assistant Professor
+Dept. of CSE
+St. Thomas College of
+Engineering and Technology,
+Mattannur
+Academic Year
+2025-26
+October 13, 2025
+Group 6 TRACIENT 1 / 19
+OUTLINE
+1INTRODUCTION
+2PROBLEM DEFINITION
+3LITERATURE SURVEY
+4PROPOSED SYSTEM
+5PROPOSED SYSTEM DESIGN
+6MODULE DIVISION
+7CONCLUSION
+8REFERENCES
+Group 6 TRACIENT 0 / 19
+INTRODUCTION
+Our Vision: To revolutionize welfare distribution in India by establishing a
+robust, transparent, and accurate income assessment system for daily
+wage and informal sector workers.
+Core Innovation: Leveraging the inherent security and immutability of
+Blockchain technology for verifiable income records, complemented by
+AI/ML for intelligent analysis.
+This enables accurate financial categorization of citizens, helping
+authorities design welfare schemes tailored to the specific needs of each
+group.
+Driving Force: Addressing the critical societal challenge of misallocated
+welfare resources and ensuring benefits reach the truly deserving, fostering
+social and economic equity.
+Group 6 TRACIENT 1 / 19
+PROBLEM DEFINITION
+India’s informal sector struggles with inequitable welfare and unreliable
+income assessments due to fragmented methods like government surveys
+and banking data, resulting in false tax avoidance, inflated welfare claims,
+and social inequities.
+Our solution uses a private blockchain to create a verifiable digital wage
+history, providing a solid foundation for accurate income data.
+AI/ML models improve this by estimating income, determining dynamic
+welfare eligibility (BPL/APL) and offering real-time insights via a
+privacy-preserving dashboard for policymakers.
+Compared to traditional methods, our system enhances accuracy,
+adaptability, and fairness in welfare delivery.
+Accurate income traceability ensures proper income tax calculation for
+individuals, promoting fairness and accountability across the entire
+workforce, not just the formal sector.
+Group 6 TRACIENT 2 / 19
+LITERATURE SURVEY
+On the Integration of Artificial Intelligence and Blockchain Technology: A
+Perspective About Security
+The integration of AI and Blockchain boosts security and trust by
+mitigating the inherent weaknesses of each technology.
+The model facilitates decentralized decision-making by processing secure,
+digitally signed data directly from a blockchain.
+This integrated approach is applicable in sectors like healthcare, supply
+chain management, and finance.
+The paper analyzes security threats for both AI (adversarial attacks, data
+privacy, bias) and blockchain (51% attacks, smart contract bugs),
+proposing mitigation strategies.
+Disadvantages:
+The framework is theoretical, lacking specific implementation details.
+There are inherent trade-offs between efficiency, security, and
+decentralization.
+AI models are vulnerable to adversarial attacks, where manipulated input
+data yields incorrect outputs.
+Group 6 TRACIENT 3 / 19
+LITERATURE SURVEY
+Blockchain-Integrated Digital Payment Systems in the Public Sector
+Explores integrating blockchain with public digital payment systems (like
+UPI) in emerging markets to boost transparency, security, and efficiency.
+This hybrid model improves transparency via immutable records, enhances
+security by eliminating single points of failure, and increases efficiency by
+cutting intermediaries and costs.
+Provides actionable policy recommendations, including developing
+blockchain regulations, establishing a national framework, and running
+pilot projects.
+Details a framework for integrating blockchain into an existing system
+(UPI) to solve specific public sector challenges.
+Disadvantages:
+Standalone blockchains are inefficient for high-volume transactions due to
+overhead and server congestion.
+Integrating decentralized blockchain with a centralized system is a major
+technical hurdle requiring complex APIs and middleware.
+Group 6 TRACIENT 4 / 19
+LITERATURE SURVEY
+Blockchain-Based KYC and Access Verification
+Traditional KYC is manual, costly, and centralized, making it inefficient
+and prone to breaches.
+Blockchain offers a decentralized, secure, and automated KYC using smart
+contracts and cryptography.
+Privacy is ensured by storing sensitive data off-chain while keeping its hash
+on-chain.
+Framework uses DIDs, ZKPs, and smart contracts, allowing users data
+control and selective sharing.
+Disadvantages:
+Poor interoperability across blockchain platforms.
+Regulatory issues with GDPR and AML compliance.
+Limited applicability to specific use cases.
+Group 6 TRACIENT 5 / 19
+LITERATURE SURVEY
+EXISTING SYSTEM
+An explainable federated blockchain framework with privacy preserving AI
+optimization for securing healthcare data
+The PPFBXAIO framework combines Federated Learning (FL),
+blockchain, and Explainable AI (XAI) to enable secure, private, and
+transparent model training across institutions without centralizing raw
+data.
+Blockchain creates a tamper-proof audit trail for model updates, while
+smart contracts are used to validate and deploy only high-quality models.
+The Levy Grasshopper Optimization Algorithm (LGOA) improves feature
+selection, and SHAP provides interpretable outputs without exposing
+sensitive data.
+Experimental results show improved accuracy, precision, recall, and F1
+scores, with lower latency and stronger defense against adversarial attacks.
+Group 6 TRACIENT 6 / 19
+LITERATURE SURVEY
+Disadvantages of the Existing System:
+The framework is limited to healthcare diagnostics and lacks broader
+applications in areas like wage transparency or tax fairness.
+It remains largely theoretical and institution-specific, without integrating
+into large-scale public infrastructures like Aadhaar or UPI.
+Its models are static, designed for fixed medical conditions, and do not
+adapt to dynamic human or socio-economic changes.
+Group 6 TRACIENT 7 / 19
+PROPOSED SYSTEM
+India’s informal sector struggles with inequitable welfare and unreliable
+income assessments due to fragmented methods like government surveys
+and banking data, resulting in false tax avoidance, inflated welfare claims,
+and social inequities.
+Our solution uses a private blockchain to create a verifiable digital wage
+history, providing a solid foundation for accurate income data.
+AI/ML models improve this by estimating income, determining dynamic
+welfare eligibility (BPL/APL) and offering real-time insights via a
+privacy-preserving dashboard for policymakers.
+Compared to traditional methods, our system enhances accuracy,
+adaptability, and fairness in welfare delivery.
+Accurate income traceability ensures proper income tax calculation for
+individuals, promoting fairness and accountability across the entire
+workforce, not just the formal sector.
+Group 6 TRACIENT 8 / 19
+PROPOSED SYSTEM DESIGN
+ARCHITECTURE DIAGRAM
+Group 6 TRACIENT 9 / 19
+USE CASE DIAGRAM
+USECASE DIAGRAM
+Group 6 TRACIENT 10 / 19
+PROPOSED SYSTEM DESIGN
+GANTT CHART
+Group 6 TRACIENT 11 / 19
+PROPOSED SYSTEM DESIGN
+DFD LEVEL 0
+Group 6 TRACIENT 12 / 19
+PROPOSED SYSTEM DESIGN
+DFD LEVEL 1
+Group 6 TRACIENT 13 / 19
+PROPOSED SYSTEM DESIGN
+DFD LEVEL 2
+Group 6 TRACIENT 14 / 19
+PROPOSED SYSTEM DESIGN
+ER DIAGRAM
+Group 6 TRACIENT 15 / 19
+MODULE DIVISION
+MODULE DIVISION
+Module Member
+Blockchain Development and Writing Smart Contracts Niranj
+AI & Backend Development (Training, Validation and Testing) Devathmaj
+Frontend & UI/UX Development Nevin
+Integration, Version Control, Deployment and Documentation Jinas
+Group 6 TRACIENT 16 / 19
+CONCLUSION
+Provides a dynamic solution for income assessment in India’s informal
+sector using a private blockchain.
+Offers technical benefits such as transparency, decentralization, real-time
+tracking, and scalability.
+Creates social benefits including targeted welfare distribution, corruption
+reduction, and worker empowerment.
+Promotes ethical benefits of equity, fairness, data privacy, and
+trust-building.
+Group 6 TRACIENT 17 / 19
+REFERENCES
+MAHIPAL, R.Blockchain Technology as a Catalyst for Sustainable Development: Exploring
+Economic, Social, and Environmental Synergies, Academic Journal of Interdisciplinary
+Studies, Vol. 13, Issue 2, 2024, pp. 151.
+ADEFILA, O.O., ONASANYA, O.K.The Economic Impact Of Financial Inclusion: A
+Pathway To Reducing Poverty In The Digital Economy, IOSR Journal of Economics and
+Finance (IOSR-JEF), Vol. 15, Issue 6, Ser-2, 2024, pp. 58–67.
+STANFORD GRADUATE SCHOOL OF BUSINESS, CONSENSYS, WORLD ECONOMIC
+FORUM.Study — Blockchain for Social Impact: Moving Beyond the Hype, 2018.
+AL HASSAN, Abdul Naser, et al.A Survey on Blockchain Technology: Evolution,
+Architecture and Security, IEEE Access, Vol. 9, 2021, pp. 47766–47792.
+BANK FOR INTERNATIONAL SETTLEMENTS (BIS).The organisation of digital payments
+in India - lessons from the Unified Payments Interface (UPI), BIS Papers No 152, 2024.
+Group 6 TRACIENT 18 / 19
+REFERENCES
+BHARDWAJ, Tanisha, SUMANGALI, K.An explainable federated blockchain framework
+with privacy-preserving AI optimization for securing healthcare data, [Journal/Conference
+Name], 2025.
+KUZNETSOV, Oleksandr, FRONTONI, Emanuele, SERNANI, Paolo, ROMEO, Luca,
+MANCINI, Adriano.On the Integration of Artificial Intelligence and Blockchain Technology:
+A Perspective About Security, [Journal/Conference Name], 2025.
+TYAGI, Vani, BERI, Yogita.Blockchain-Integrated Digital Payment Systems in the Public
+Sector: Innovation, Transparency, and Economic Efficiency in Emerging Markets, Indian
+Council of Social Science Research Vasanta College for Women (BHU), 2025.
+JOHN, Beauden.Blockchain-Based KYC and Access Verification for Financial Institutions,
+June 2025.
+Group 6 TRACIENT 19 / 19

@@ -1,0 +1,181 @@
+Project Roadmap: Blockchain and AI-Enabled Income Traceability System (TRACIENT)
+💡 Phase 0: Knowledge Prerequisites (Pre-Build)
+Core Concepts to Learn
+Concept Why It’s Important
+Blockchain Basics Understand blocks, consensus, public/private chain, immutability
+Hyperledger Fabric Framework for private blockchain, suited for gov/enterprise use
+Go (Golang) Primary language for writing smart contracts (chaincode) in Fabric
+Chaincode Logic How smart contracts enforce wage logging, BPL classification, etc.
+AI/ML Models Needed for income prediction, classification (BPL/APL), fraud detection
+Data Privacy + ZKP Ensure secure, non-leaky architecture for sensitive IDs like Aadhaar
+🚀 Phase 1: Foundation & Proof of Concept (Months 1-3)
+Goals:
+Set up initial Hyperledger Fabric blockchain network
+Write basic Go chaincode to log wage data
+Build a working frontend + backend demo (PoC)
+Key Tasks:
+Team Setup
+Roles: Blockchain Developer (Go), AI/ML Engineer , Frontend Developer , Backend Developer
+Tools: GitHub, Docker , VS Code, Go 1.20+, Python 3.9+, Fabric binaries
+Dev Environment Setup
+Folder structure: blockchain/ , ai-model/ , backend/ , frontend/
+Docker setup for Fabric
+Architecture Design
+Finalize system flow: Wage -> Chaincode -> AI -> Dashboard• 
+• 
+• 
+1. 
+2. 
+3. 
+4. 
+5. 
+6. 
+7. 
+8. 
+1
+Define schemas: workerID , txnID, amount , employerID , sector , etc.
+Fabric PoC Network
+One-org setup via Docker Compose
+Go chaincode: 
+funcrecordWage (workerID string,employerID string,amount float64 ,
+timestamp string)
+funcqueryWageHistory (workerID string)
+Simple API + Frontend
+Node.js/Go backend to call chaincode
+React UI: form to log wage, wage history viewer
+⚙️ Phase 2: MVP Development (Months 4-7)
+Goals:
+Full blockchain + AI-backed MVP
+Support for multi-org, user roles, dashboards
+Key Tasks:
+Multi-org Fabric Network
+Setup orgs: Government, Employers, NGOs
+Add identity management (CA, certificates)
+Advanced Chaincode in Go
+Access control: Only authorized employers log wages
+New functions: 
+funcupdateBPLStatus (workerID string,isBPLbool)
+Merkle proof for verification9. 
+10. 
+11. 
+12. 
+13. 
+14. 
+15. 
+• 
+• 
+1. 
+2. 
+3. 
+4. 
+5. 
+6. 
+7. 
+2
+AI/ML Model Integration
+Simulated wage dataset
+ML Models:
+Linear Regression (income estimation)
+Random Forest (BPL classification)
+Isolation Forest (anomaly detection)
+Backend API Layer
+Trigger ML models on new wage entries
+Chaincode call to update eligibility flag
+UI Panels
+Employer Panel
+Worker Panel (view income, history)
+Government Dashboard
+🔎 Phase 3: Integration & Security (Months 8-10)
+Goals:
+Finalize data flow, integrate real-world systems, and secure entire system
+Key Tasks:
+Integration
+Simulated APIs: Aadhaar eKYC, UPI sandbox, Exotel/Twilio (IVR/SMS)
+Testing
+Unit: Chaincode + API
+Integration: End-to-end from wage entry → dashboard
+Performance: 10k txns stress test
+Security Hardening8. 
+9. 
+10. 
+◦ 
+◦ 
+◦ 
+11. 
+12. 
+13. 
+14. 
+15. 
+16. 
+17. 
+• 
+1. 
+2. 
+3. 
+4. 
+5. 
+6. 
+7. 
+3
+Anonymize Aadhaar/PAN using SHA256
+Add Zero-Knowledge Proofs (ZKPs)
+Implement RBAC, encryption (TLS), penetration testing
+🏠 Phase 4: Pilot Deployment (Month 11-12)
+Goals:
+Launch system for live users in limited area
+Key Tasks:
+Pilot Site Selection
+1 Panchayat, construction group, or small NGO
+Onboard 50–100 workers + employers
+Cloud Deployment
+AWS/GCP: Kubernetes for Fabric
+Firebase/PostgreSQL/IPFS for storage
+Feedback Loop
+Conduct user interviews
+Log system metrics, AI accuracy, UI UX issues
+📊 Phase 5: Scaling & Expansion (Post Pilot)
+Goals:
+Scale to state or national level
+Get policy and government adoption
+Key Tasks:
+System Enhancement
+Retrain AI models on live data8. 
+9. 
+10. 
+• 
+1. 
+2. 
+3. 
+4. 
+5. 
+6. 
+7. 
+8. 
+9. 
+• 
+• 
+1. 
+2. 
+4
+Support IVR, regional languages, offline sync
+Policy Advocacy
+Prepare whitepaper for NITI Aayog, MeitY
+Suggest DBT, eShram, UPI integrations
+India-Scale Plan
+Integrate India Stack: Aadhaar , DigiLocker , UPI
+Plan phased state rollouts with local partners
+📄 Final Deliverables by Phase
+Phase Deliverable
+1 Working PoC with wage logging chaincode + UI
+2 MVP system with Fabric, ML engine, dashboards
+3 Fully integrated and secured production system
+4 Live pilot launch + usage feedback report
+5 Scalable version + policy whitepaper
+Let me know when you're ready for the Go chaincode + backend code templates.3. 
+4. 
+5. 
+6. 
+7. 
+8. 
+9. 
+5

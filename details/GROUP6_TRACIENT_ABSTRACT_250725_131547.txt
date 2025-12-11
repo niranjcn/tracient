@@ -1,0 +1,56 @@
+Group 6
+Blockchain and AI-Enabled Income Traceability
+System for Equitable Welfare Distribution
+Abstract
+Ensuring equitable welfare distribution and accurate income assessment for daily wage
+and informal sector workers in India remains a persistent challenge. Existing methods
+such as income tax filings, government surveys like the Periodic Labour Force Survey
+(PLFS) and the Socio-Economic Caste Census (SECC), ration card declarations, and
+banking data are either infrequent, fragmented, or exclude the vast informal workforce,
+which constitutes over 80% of India’s labor population. This results in unreliable, eas-
+ily manipulated, or self-declared income records. Consequently, many individuals falsely
+claim Below Poverty Line (BPL) status, inflating the BPL population and causing misal-
+location of welfare resources. This deprives genuinely deserving populations of adequate
+benefits, contributing to social and economic inequities. To address these challenges,
+we propose an Income Traceability System powered by blockchain and AI/ML technolo-
+gies. The system immutably records every digital wage payment on a private blockchain,
+creating a tamper-proof, verifiable income history. AI models accurately estimate in-
+come bands, dynamically classify individuals for welfare eligibility such as BPL or Above
+Poverty Line (APL). Additionally, the system offers a government-ready, real-time mon-
+itoring dashboard for policymakers, ensuring privacy-preserving data handling, context-
+aware income profiling, and automated welfare eligibility flagging. Compared to tradi-
+tional methods, this system offers greater accuracy, real-time insights, and adaptability
+to the fluctuating nature of informal sector incomes. By integrating blockchain-verified
+wage records with AI-driven analytics, the framework enhances the fairness, integrity,
+and efficiency of welfare delivery, ensuring benefits reach the truly deserving. Combined
+with strong governmental reforms promoting digital and cashless transactions, the system
+can also help curb illegal activities like money laundering, tax evasion and unaccounted
+financial flows, contributing to a more transparent, inclusive, and economically resilient
+society.
+EXPECTED INPUT: (All inputs are simulated due to security reasons)
+•PAN / Aadhaar Number — Unique identifier for each worker (optionally anonymized
+for privacy)
+•Wage Payment Data — Amount paid, date/time, transaction ID, and payment
+mode (UPI, bank transfer)
+•Job Type / Sector — Nature of employment (e.g., construction, housekeeping)
+to contextualize income
+•Government Threshold Data — Income ceilings for BPL/APL classification as
+defined by policy
+•Policy Parameters — Specific eligibility rules for welfare schemes (e.g., income
+cutoffs, sector priorities)
+•Banking/UPI APIs — Interfaces to fetch and verify digital payment records
+EXPECTED OUTPUT:
+•Immutable Wage Record — Tamper-proof transaction history recorded on blockchain
+•Estimated Annual Income — AI-predicted total yearly income for each worker
+•Dynamic BPL/APL Classification — Real-time classification based on updated
+income data
+•Welfare Eligibility Flags — Automated indicators of eligibility for welfare schemes
+•Policy Monitoring Dashboard — Visual tool for authorities to monitor income
+trends and eligibility distributions
+Devathmaj A Kaliyathan (STM22CS021) Mr. Jithin S
+Muhammed Jinas T P (STM22CS038) (Project Guide)
+Nevin R Pradeep (STM22CS043) Dept. of CSE
+Niranj C N (STM22CS044) St. Thomas College of
+Engineering and
+Technology, Mattannur
+July 18, 2025

@@ -1,0 +1,42 @@
+# Tracient Project: Progress Tracker
+
+**Last Updated:** Saturday, August 2, 2025
+
+This file tracks the development progress of the Tracient project.
+
+---
+
+### **Phase 1: Foundation & Local Proof of Concept**
+
+**Objective:** To build a fully local, functional prototype that validates the core concept.
+
+**Completed Steps:**
+
+1.  **Project Analysis & Planning:**
+    *   Analyzed all provided documents (`Roadmap-Main_project.pdf`, `Tracient Project Roadmap.pdf`, `Details.txt`).
+    *   Synthesized the information into a new, refined plan.
+    *   **Deliverable:** Created and saved `detailed_roadmap_final.md`.
+
+2.  **Environment Setup (Completed):**
+    *   Created the core project directory structure: `blockchain/`, `ai-model/`, `backend/`, `frontend/`.
+    *   Successfully installed Hyperledger Fabric binaries, Docker images, and sample projects.
+        *   Downloaded the `install-fabric.sh` script.
+        *   Troubleshooted and resolved shell execution errors.
+        *   Resolved the Docker connection error by starting Docker Desktop.
+        *   **Deliverable:** A complete local Hyperledger Fabric development environment.
+
+---
+
+### **Current Status & Next Steps**
+
+*   **Current Status:** The development environment is fully set up. All necessary tools and Fabric components are installed.
+
+*   **Immediate Next Action (When you return):**
+    1.  Open a **Git Bash** terminal.
+    2.  Navigate to the test network directory: `cd C:\Users\niran\Documents\Major-Project\blockchain\fabric-samples\test-network`
+    3.  Run the command to start the network and create a channel: `./network.sh up createChannel`
+
+*   **Upcoming Step (After starting the network):**
+    *   Deploy and interact with a sample smart contract (chaincode) to understand the fundamentals.
+
+

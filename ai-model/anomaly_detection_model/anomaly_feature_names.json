@@ -1,0 +1,38 @@
+{
+  "feature_names": [
+    "unverified_rate",
+    "weekend_pct",
+    "night_hours_pct",
+    "source_concentration",
+    "num_unique_sources",
+    "income_cv",
+    "max_deviation_from_mean",
+    "amount_range_ratio",
+    "round_amount_pct",
+    "near_50k_pct",
+    "very_high_pct",
+    "avg_tx_per_month",
+    "velocity_change",
+    "burst_ratio",
+    "freq_cv",
+    "max_mom_increase",
+    "avg_mom_change",
+    "pct_high_deviation",
+    "cash_deposit_rate",
+    "sector_encoded",
+    "income_tier_encoded",
+    "is_formal"
+  ],
+  "approach": "Pattern-based anomaly detection",
+  "description": "Detects anomalies based on income PATTERNS, not absolute thresholds",
+  "key_patterns": [
+    "Income variability (CV)",
+    "Month-over-month changes",
+    "Deviation from personal baseline",
+    "Transaction frequency changes",
+    "Timing patterns (weekend, night)",
+    "Threshold avoidance behavior",
+    "Source diversity and verification",
+    "Dormancy and burst patterns"
+  ]
+}

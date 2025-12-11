@@ -1,0 +1,30 @@
+{
+  "model_name": "XGBoost",
+  "training_date": "2025-12-05T05:52:59.353864",
+  "num_workers": 30000,
+  "history_months": 24,
+  "num_features": 22,
+  "optimal_threshold": 0.6500000000000001,
+  "metrics": {
+    "accuracy": 0.9851666666666666,
+    "precision": 0.9803481190342505,
+    "recall": 0.97,
+    "f1_score": 0.9751466070929908,
+    "roc_auc": 0.9983953703703704
+  },
+  "anomaly_types": [
+    "sudden_spike",
+    "high_volatility",
+    "irregular_timing",
+    "new_sources",
+    "round_amounts",
+    "structuring",
+    "velocity_change",
+    "dormant_burst",
+    "pattern_break",
+    "layering",
+    "ghost_income",
+    "weekend_heavy"
+  ],
+  "detection_approach": "Pattern-based (compares against personal baseline, not fixed thresholds)"
+}

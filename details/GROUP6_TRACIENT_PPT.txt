@@ -1,0 +1,95 @@
+Department of Computer Science and Engineering
+St. Thomas College of Engineering and Technology
+Mattannur
+Block Chain Based Income Traceabilty
+System for Equitable Welfare Distribution
+Authors :
+DEVATHMAJ A KALIYATHAN (STM22CS021)
+MUHAMMED JINAS T P (STM22CS038)
+NEVIN R PRADEEP (STM22CS043)
+NIRANJ C N (STM22CS044)Supervisor :
+Mr. Jithin S
+Assistant Professor
+Dept. of CSE
+St. Thomas College of
+Engineering and Technology,
+Mattannur
+Academic Year
+2025-26
+July 18, 2025
+Group 6 TRACIENT 1 / 5
+OUTLINE
+1AREA OF INTEREST
+2PROJECT TOPIC
+3ABSTRACT
+4CONCLUSION
+5REFERENCES
+Group 6 TRACIENT 0 / 5
+AREA OF INTEREST
+CYBER & NETWORK SECURITY
+Group 6 TRACIENT 1 / 5
+PROJECT TOPIC
+Block Chain Based Income Traceabilty
+System for Equitable Welfare
+Distribution
+Our Vision: To revolutionize welfare distribution in India by establishing a
+robust, transparent, and accurate income assessment system for daily
+wage and informal sector workers.
+Core Innovation: Leveraging the inherent security and immutability of
+Blockchain technology for verifiable income records, complemented by
+AI/ML for intelligent analysis.
+Driving Force: Addressing the critical societal challenge of misallocated
+welfare resources and ensuring benefits reach the truly deserving, fostering
+social and economic equity.
+Group 6 TRACIENT 2 / 5
+ABSTRACT
+India’s informal sector struggles with inequitable welfare and unreliable
+income assessments due to fragmented methods like government surveys
+and banking data, resulting in false tax avoidance, inflated welfare claims,
+and social inequities.
+Our solution uses a private blockchain to create a verifiable digital wage
+history, providing a solid foundation for accurate income data.
+AI/ML models improve this by estimating income, determining dynamic
+welfare eligibility (BPL/APL) and offering real-time insights via a
+privacy-preserving dashboard for policymakers.
+Compared to traditional methods, our system enhances accuracy,
+adaptability, and fairness in welfare delivery.
+Accurate income traceability ensures proper income tax calculation for
+individuals, promoting fairness and accountability across the entire
+workforce, not just the formal sector.
+Group 6 TRACIENT 3 / 5
+CONCLUSION
+Technical Benefits
+Transparency
+Decentralization
+Real-time Tracking
+Automated Verification
+Interoperability
+Scalability
+Social Benefits
+Targeted Welfare Distribution
+Empowerment of Informal Workers
+Corruption Reduction
+Inclusivity
+Improved Policy-making
+Ethical Benefits
+Equity and Fairness
+Data Privacy
+Social Justice
+Trust Building
+Prevention of Exploitation
+Group 6 TRACIENT 4 / 5
+REFERENCES
+MAHIPAL, R. Blockchain Technology as a Catalyst for Sustainable Development: Exploring
+Economic, Social, and Environmental Synergies , Academic Journal of Interdisciplinary
+Studies, Vol. 13, Issue 2, 2024, pp. 151.
+ADEFILA, O.O., ONASANYA, O.K. The Economic Impact Of Financial Inclusion: A
+Pathway To Reducing Poverty In The Digital Economy , IOSR Journal of Economics and
+Finance (IOSR-JEF), Vol. 15, Issue 6, Ser-2, 2024, pp. 58–67.
+STANFORD GRADUATE SCHOOL OF BUSINESS, CONSENSYS, WORLD ECONOMIC
+FORUM. Study — Blockchain for Social Impact: Moving Beyond the Hype , 2018.
+AL HASSAN, Abdul Naser, et al. A Survey on Blockchain Technology: Evolution,
+Architecture and Security , IEEE Access, Vol. 9, 2021, pp. 47766–47792.
+BANK FOR INTERNATIONAL SETTLEMENTS (BIS). The organisation of digital payments
+in India - lessons from the Unified Payments Interface (UPI) , BIS Papers No 152, 2024.
+Group 6 TRACIENT 5 / 5
