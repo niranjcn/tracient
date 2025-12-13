@@ -1,6 +1,6 @@
 import React, { Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { PageLoader } from './components/common';
+import { PageLoader, ErrorBoundary } from './components/common';
 import { useAuth } from './hooks/useAuth';
 import { ROUTES } from './utils/constants';
 
@@ -45,6 +45,8 @@ const AdminDashboard = React.lazy(() => import('./pages/admin/Dashboard'));
 const UserManagement = React.lazy(() => import('./pages/admin/UserManagement'));
 const SystemHealth = React.lazy(() => import('./pages/admin/SystemHealth'));
 const Organizations = React.lazy(() => import('./pages/admin/Organizations'));
+const NetworkTopology = React.lazy(() => import('./pages/admin/NetworkTopology'));
+const Security = React.lazy(() => import('./pages/admin/Security'));
 const AdminProfile = React.lazy(() => import('./pages/admin/Profile'));
 
 // Employer Profile
@@ -61,8 +63,9 @@ const App: React.FC = () => {
   }
 
   return (
-    <Suspense fallback={<PageLoader />}>
-      <Routes>
+    <ErrorBoundary>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
         {/* Public Routes */}
         <Route path={ROUTES.HOME} element={<Home />} />
         <Route path={ROUTES.UNAUTHORIZED} element={<Unauthorized />} />
@@ -140,6 +143,8 @@ const App: React.FC = () => {
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="users" element={<UserManagement />} />
           <Route path="system" element={<SystemHealth />} />
+          <Route path="network" element={<NetworkTopology />} />
+          <Route path="security" element={<Security />} />
           <Route path="organizations" element={<Organizations />} />
           <Route path="profile" element={<AdminProfile />} />
         </Route>
@@ -148,6 +153,7 @@ const App: React.FC = () => {
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>
+    </ErrorBoundary>
   );
 };
 

@@ -395,13 +395,13 @@ const Organizations: React.FC = () => {
             <Select
               options={typeOptions}
               value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
+              onChange={setTypeFilter}
               className="w-40"
             />
             <Select
               options={statusOptions}
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={setStatusFilter}
               className="w-40"
             />
           </div>

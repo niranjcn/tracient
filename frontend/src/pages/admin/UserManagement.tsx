@@ -366,13 +366,13 @@ const UserManagement: React.FC = () => {
             <Select
               options={roleOptions}
               value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value)}
+              onChange={setRoleFilter}
               className="w-40"
             />
             <Select
               options={statusOptions}
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={setStatusFilter}
               className="w-40"
             />
           </div>
@@ -432,7 +432,7 @@ const UserManagement: React.FC = () => {
                 label="Status"
                 options={statusOptions.filter(s => s.value !== 'all')}
                 value={selectedUser.status}
-                onChange={(e) => handleStatusChange(selectedUser.id, e.target.value as User['status'])}
+                onChange={(value) => handleStatusChange(selectedUser.id, value as User['status'])}
               />
               {selectedUser.organization && (
                 <Input

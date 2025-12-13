@@ -84,8 +84,8 @@ const mockMetricsHistory = [
 ];
 
 const SystemHealth: React.FC = () => {
-  const [services, setServices] = useState<ServiceStatus[]>([]);
-  const [nodes, setNodes] = useState<NodeStatus[]>([]);
+  const [services, setServices] = useState<ServiceStatus[]>(mockServices);
+  const [nodes, setNodes] = useState<NodeStatus[]>(mockNodes);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -264,11 +264,10 @@ const SystemHealth: React.FC = () => {
             <CardContent>
               <CustomAreaChart
                 data={mockMetricsHistory}
-                xKey="time"
                 yKey="cpu"
                 color={CHART_COLORS.primary}
                 height={250}
-                formatValue={(v) => `${v}%`}
+                formatValue={(v: number) => `${v}%`}
               />
             </CardContent>
           </Card>
@@ -408,11 +407,10 @@ const SystemHealth: React.FC = () => {
             <CardContent>
               <CustomLineChart
                 data={mockMetricsHistory}
-                xKey="time"
                 yKey="cpu"
                 color={CHART_COLORS.primary}
                 height={250}
-                formatValue={(v) => `${v}%`}
+                formatValue={(v: number) => `${v}%`}
               />
             </CardContent>
           </Card>
@@ -423,11 +421,10 @@ const SystemHealth: React.FC = () => {
             <CardContent>
               <CustomLineChart
                 data={mockMetricsHistory}
-                xKey="time"
                 yKey="memory"
                 color={CHART_COLORS.accent}
                 height={250}
-                formatValue={(v) => `${v}%`}
+                formatValue={(v: number) => `${v}%`}
               />
             </CardContent>
           </Card>
@@ -438,11 +435,10 @@ const SystemHealth: React.FC = () => {
             <CardContent>
               <CustomAreaChart
                 data={mockMetricsHistory}
-                xKey="time"
                 yKey="requests"
                 color={CHART_COLORS.success}
                 height={250}
-                formatValue={(v) => `${v} req`}
+                formatValue={(v: number) => `${v} req`}
               />
             </CardContent>
           </Card>

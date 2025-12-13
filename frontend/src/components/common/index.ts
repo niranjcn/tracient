@@ -14,6 +14,8 @@ export { default as Alert } from './Alert';
 export { default as Avatar, AvatarGroup } from './Avatar';
 export { default as FileUpload } from './FileUpload';
 export { default as EmptyState } from './EmptyState';
+export { default as ErrorBoundary } from './ErrorBoundary';
+export { default as Switch } from './Switch';
 
 // Re-export types
 export type { ButtonProps } from './Button';

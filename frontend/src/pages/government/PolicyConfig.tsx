@@ -290,7 +290,7 @@ const PolicyConfiguration: React.FC = () => {
             <Select
               options={categoryOptions}
               value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
+              onChange={setCategoryFilter}
               className="w-48"
             />
           </div>

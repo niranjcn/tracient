@@ -359,19 +359,19 @@ const AnomalyAlerts: React.FC = () => {
             <Select
               options={severityOptions}
               value={severityFilter}
-              onChange={(e) => setSeverityFilter(e.target.value)}
+              onChange={setSeverityFilter}
               className="w-40"
             />
             <Select
               options={typeOptions}
               value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
+              onChange={setTypeFilter}
               className="w-48"
             />
             <Select
               options={statusOptions}
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={setStatusFilter}
               className="w-40"
             />
           </div>

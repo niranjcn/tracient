@@ -136,7 +136,7 @@ const Analytics: React.FC = () => {
           <Select
             options={timeRangeOptions}
             value={timeRange}
-            onChange={(e) => setTimeRange(e.target.value)}
+            onChange={setTimeRange}
             className="w-40"
           />
           <Button variant="outline" onClick={handleRefresh} disabled={isRefreshing}>

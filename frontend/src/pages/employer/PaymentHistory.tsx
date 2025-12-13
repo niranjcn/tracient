@@ -296,13 +296,13 @@ const PaymentHistory: React.FC = () => {
             <Select
               options={statusOptions}
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={setStatusFilter}
               className="w-full md:w-40"
             />
             <Select
               options={dateRangeOptions}
               value={dateRange}
-              onChange={(e) => setDateRange(e.target.value)}
+              onChange={setDateRange}
               className="w-full md:w-40"
             />
           </div>

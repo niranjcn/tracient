@@ -168,11 +168,10 @@ const AdminDashboard: React.FC = () => {
             </div>
             <CustomLineChart
               data={data.serverMetrics}
-              xKey="time"
               yKey="cpu"
               color={CHART_COLORS.primary}
               height={200}
-              formatValue={(v) => `${v}%`}
+              formatValue={(v: number) => `${v}%`}
             />
           </CardContent>
         </Card>
