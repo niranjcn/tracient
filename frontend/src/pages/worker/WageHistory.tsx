@@ -311,7 +311,7 @@ const WageHistory: React.FC = () => {
         <CardContent>
           <CustomAreaChart
             data={monthlyData.map(d => ({ name: d.month, amount: d.amount }))}
-            areas={[{ dataKey: 'amount', color: CHART_COLORS[0], name: 'Earnings' }]}
+            areas={[{ dataKey: 'amount', color: CHART_COLORS.array[0], name: 'Earnings' }]}
             xAxisKey="name"
             height={200}
             showLegend={false}
@@ -362,8 +362,8 @@ const WageHistory: React.FC = () => {
             />
           ) : (
             <Table
-              data={filteredRecords as unknown as Record<string, unknown>[]}
-              columns={columns as Column<Record<string, unknown>>[]}
+              data={filteredRecords}
+              columns={columns}
               keyField="id"
             />
           )}

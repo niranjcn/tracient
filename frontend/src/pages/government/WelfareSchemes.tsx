@@ -7,19 +7,14 @@ import {
   Search,
   Plus,
   Edit2,
-  Trash2,
   CheckCircle2,
   XCircle,
   Clock,
-  Eye,
-  Filter
+  Eye
 } from 'lucide-react';
 import { 
   Card, 
-  CardHeader, 
-  CardTitle, 
   CardContent,
-  CardDescription,
   Button,
   Input,
   Select,
@@ -191,7 +186,7 @@ const WelfareSchemes: React.FC = () => {
     const config = {
       active: { variant: 'success' as const, icon: CheckCircle2 },
       paused: { variant: 'warning' as const, icon: Clock },
-      upcoming: { variant: 'accent' as const, icon: Calendar },
+      upcoming: { variant: 'primary' as const, icon: Calendar },
       expired: { variant: 'error' as const, icon: XCircle },
     };
     return config[status];
@@ -241,26 +236,22 @@ const WelfareSchemes: React.FC = () => {
         <StatCard
           title="Total Schemes"
           value={stats.totalSchemes.toString()}
-          icon={Heart}
-          color="primary"
+          icon={<Heart className="h-5 w-5" />}
         />
         <StatCard
           title="Active Schemes"
           value={stats.activeSchemes.toString()}
-          icon={CheckCircle2}
-          color="success"
+          icon={<CheckCircle2 className="h-5 w-5" />}
         />
         <StatCard
           title="Total Beneficiaries"
           value={formatNumber(stats.totalBeneficiaries)}
-          icon={Users}
-          color="accent"
+          icon={<Users className="h-5 w-5" />}
         />
         <StatCard
           title="Total Disbursed"
           value={formatCurrency(stats.totalDisbursed)}
-          icon={IndianRupee}
-          color="warning"
+          icon={<IndianRupee className="h-5 w-5" />}
         />
       </div>
 
@@ -273,19 +264,19 @@ const WelfareSchemes: React.FC = () => {
                 placeholder="Search schemes..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                icon={<Search className="h-4 w-4" />}
+                leftIcon={<Search className="h-4 w-4" />}
               />
             </div>
             <Select
               options={categoryOptions}
               value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
+              onChange={setCategoryFilter}
               className="w-40"
             />
             <Select
               options={statusOptions}
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={setStatusFilter}
               className="w-40"
             />
           </div>

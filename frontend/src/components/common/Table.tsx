@@ -31,7 +31,7 @@ export interface TableProps<T> {
   className?: string;
 }
 
-function Table<T extends Record<string, unknown>>({
+function Table<T extends object>({
   columns,
   data,
   keyField,
@@ -58,6 +58,10 @@ function Table<T extends Record<string, unknown>>({
       value = (value as Record<string, unknown>)?.[k];
     }
     return value;
+  };
+
+  const getItemKey = (item: T): string => {
+    return String((item as Record<string, unknown>)[keyField as string]);
   };
 
   return (
@@ -119,7 +123,7 @@ function Table<T extends Record<string, unknown>>({
               </tr>
             ) : (
               data.map((item, index) => {
-                const id = String(item[keyField]);
+                const id = getItemKey(item);
                 const isSelected = selectedRows?.has(id);
 
                 return (

@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
-  Filter,
   Search,
   Download,
   RefreshCw,
@@ -17,10 +16,7 @@ import {
 } from 'lucide-react';
 import { 
   Card, 
-  CardHeader, 
-  CardTitle, 
   CardContent,
-  CardDescription,
   Button,
   Input,
   Select,
@@ -239,7 +235,7 @@ const AnomalyAlerts: React.FC = () => {
     const config = {
       critical: { variant: 'error' as const, label: 'Critical' },
       high: { variant: 'warning' as const, label: 'High' },
-      medium: { variant: 'accent' as const, label: 'Medium' },
+      medium: { variant: 'primary' as const, label: 'Medium' },
       low: { variant: 'default' as const, label: 'Low' },
     };
     return config[severity];
@@ -248,7 +244,7 @@ const AnomalyAlerts: React.FC = () => {
   const getStatusBadge = (status: Anomaly['status']) => {
     const config = {
       pending: { variant: 'warning' as const, label: 'Pending', icon: Clock },
-      investigating: { variant: 'accent' as const, label: 'Investigating', icon: Eye },
+      investigating: { variant: 'primary' as const, label: 'Investigating', icon: Eye },
       resolved: { variant: 'success' as const, label: 'Resolved', icon: CheckCircle2 },
       dismissed: { variant: 'default' as const, label: 'Dismissed', icon: XCircle },
     };
@@ -318,26 +314,22 @@ const AnomalyAlerts: React.FC = () => {
         <StatCard
           title="Total Alerts"
           value={stats.total.toString()}
-          icon={AlertTriangle}
-          color="warning"
+          icon={<AlertTriangle className="h-5 w-5" />}
         />
         <StatCard
           title="Critical Alerts"
           value={stats.critical.toString()}
-          icon={Shield}
-          color="error"
+          icon={<Shield className="h-5 w-5" />}
         />
         <StatCard
           title="Pending Review"
           value={stats.pending.toString()}
-          icon={Clock}
-          color="accent"
+          icon={<Clock className="h-5 w-5" />}
         />
         <StatCard
           title="Resolved"
           value={stats.resolved.toString()}
-          icon={CheckCircle2}
-          color="success"
+          icon={<CheckCircle2 className="h-5 w-5" />}
         />
       </div>
 
@@ -353,7 +345,7 @@ const AnomalyAlerts: React.FC = () => {
                 placeholder="Search by worker, employer, or ID..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                icon={<Search className="h-4 w-4" />}
+                leftIcon={<Search className="h-4 w-4" />}
               />
             </div>
             <Select

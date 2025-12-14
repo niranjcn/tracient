@@ -2,14 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Users, 
-  TrendingUp, 
   AlertTriangle,
   BarChart3,
   MapPin,
   Shield,
-  FileText,
   Settings,
-  IndianRupee,
   Building2,
   BadgeCheck,
   Heart
@@ -28,7 +25,7 @@ import {
   CustomBarChart,
   CustomPieChart
 } from '@/components/common';
-import { formatCurrency, formatNumber } from '@/utils/formatters';
+import { formatNumber } from '@/utils/formatters';
 import { CHART_COLORS } from '@/utils/constants';
 
 const mockDashboardData = {
@@ -44,19 +41,19 @@ const mockDashboardData = {
     wages: 8.5,
   },
   incomeDistribution: [
-    { month: 'Jan', income: 45000000 },
-    { month: 'Feb', income: 48000000 },
-    { month: 'Mar', income: 52000000 },
-    { month: 'Apr', income: 49000000 },
-    { month: 'May', income: 55000000 },
-    { month: 'Jun', income: 58000000 },
+    { name: 'Jan', month: 'Jan', income: 45000000 },
+    { name: 'Feb', month: 'Feb', income: 48000000 },
+    { name: 'Mar', month: 'Mar', income: 52000000 },
+    { name: 'Apr', month: 'Apr', income: 49000000 },
+    { name: 'May', month: 'May', income: 55000000 },
+    { name: 'Jun', month: 'Jun', income: 58000000 },
   ],
   sectorDistribution: [
-    { sector: 'Agriculture', workers: 180000, amount: 15000000 },
-    { sector: 'Construction', workers: 120000, amount: 18000000 },
-    { sector: 'Manufacturing', workers: 95000, amount: 20000000 },
-    { sector: 'Services', workers: 85000, amount: 12000000 },
-    { sector: 'Others', workers: 62389, amount: 8000000 },
+    { name: 'Agriculture', sector: 'Agriculture', workers: 180000, amount: 15000000 },
+    { name: 'Construction', sector: 'Construction', workers: 120000, amount: 18000000 },
+    { name: 'Manufacturing', sector: 'Manufacturing', workers: 95000, amount: 20000000 },
+    { name: 'Services', sector: 'Services', workers: 85000, amount: 12000000 },
+    { name: 'Others', sector: 'Others', workers: 62389, amount: 8000000 },
   ],
   bplDistribution: [
     { name: 'BPL Eligible', value: 189456 },
@@ -77,7 +74,7 @@ const mockDashboardData = {
 };
 
 const GovernmentDashboard: React.FC = () => {
-  const { user } = useAuth();
+  useAuth(); // Ensure user is authenticated
   const [data, setData] = useState(mockDashboardData);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -103,26 +100,26 @@ const GovernmentDashboard: React.FC = () => {
       title: 'Total Workers',
       value: formatNumber(data.totalWorkers),
       trend: data.trends.workers,
-      icon: Users,
+      icon: <Users className="h-5 w-5" />,
       color: 'primary' as const,
     },
     {
       title: 'BPL Eligible',
       value: formatNumber(data.bplEligible),
       trend: data.trends.bpl,
-      icon: BadgeCheck,
+      icon: <BadgeCheck className="h-5 w-5" />,
       color: 'success' as const,
     },
     {
       title: 'Total Employers',
       value: formatNumber(data.totalEmployers),
-      icon: Building2,
+      icon: <Building2 className="h-5 w-5" />,
       color: 'accent' as const,
     },
     {
       title: 'Anomalies Detected',
       value: data.anomaliesDetected,
-      icon: AlertTriangle,
+      icon: <AlertTriangle className="h-5 w-5" />,
       color: 'warning' as const,
     },
   ];
@@ -167,9 +164,8 @@ const GovernmentDashboard: React.FC = () => {
             key={index}
             title={stat.title}
             value={stat.value}
-            trend={stat.trend}
+            change={stat.trend}
             icon={stat.icon}
-            color={stat.color}
           />
         ))}
       </div>
@@ -237,11 +233,9 @@ const GovernmentDashboard: React.FC = () => {
           <CardContent>
             <CustomAreaChart
               data={data.incomeDistribution}
-              xKey="month"
-              yKey="income"
-              color={CHART_COLORS.primary}
+              areas={[{ dataKey: 'income', color: CHART_COLORS.primary, name: 'Income' }]}
+              xAxisKey="name"
               height={250}
-              formatValue={(v) => formatCurrency(v)}
             />
           </CardContent>
         </Card>
@@ -286,11 +280,9 @@ const GovernmentDashboard: React.FC = () => {
         <CardContent>
           <CustomBarChart
             data={data.sectorDistribution}
-            xKey="sector"
-            yKey="workers"
-            color={CHART_COLORS.accent}
+            bars={[{ dataKey: 'workers', color: CHART_COLORS.accent, name: 'Workers' }]}
+            xAxisKey="name"
             height={250}
-            formatValue={(v) => formatNumber(v)}
           />
         </CardContent>
       </Card>

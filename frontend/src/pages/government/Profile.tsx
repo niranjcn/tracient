@@ -4,9 +4,7 @@ import {
   Building2, 
   Mail, 
   Phone, 
-  MapPin,
   Shield,
-  Bell,
   Lock,
   Save,
   Camera
@@ -19,7 +17,6 @@ import {
   CardDescription,
   Button,
   Input,
-  Select,
   Spinner,
   Avatar,
   Tabs,
@@ -136,32 +133,32 @@ const Profile: React.FC = () => {
                 label="Full Name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                icon={<User className="h-4 w-4" />}
+                leftIcon={<User className="h-4 w-4" />}
               />
               <Input
                 label="Employee ID"
                 value={formData.employeeId}
                 disabled
-                icon={<Shield className="h-4 w-4" />}
+                leftIcon={<Shield className="h-4 w-4" />}
               />
               <Input
                 label="Email"
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                icon={<Mail className="h-4 w-4" />}
+                leftIcon={<Mail className="h-4 w-4" />}
               />
               <Input
                 label="Phone"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                icon={<Phone className="h-4 w-4" />}
+                leftIcon={<Phone className="h-4 w-4" />}
               />
               <Input
                 label="Department"
                 value={formData.department}
                 onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                icon={<Building2 className="h-4 w-4" />}
+                leftIcon={<Building2 className="h-4 w-4" />}
               />
               <Input
                 label="Designation"
@@ -266,19 +263,19 @@ const Profile: React.FC = () => {
                 label="Current Password"
                 type="password"
                 placeholder="Enter current password"
-                icon={<Lock className="h-4 w-4" />}
+                leftIcon={<Lock className="h-4 w-4" />}
               />
               <Input
                 label="New Password"
                 type="password"
                 placeholder="Enter new password"
-                icon={<Lock className="h-4 w-4" />}
+                leftIcon={<Lock className="h-4 w-4" />}
               />
               <Input
                 label="Confirm New Password"
                 type="password"
                 placeholder="Confirm new password"
-                icon={<Lock className="h-4 w-4" />}
+                leftIcon={<Lock className="h-4 w-4" />}
               />
             </div>
 

@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Search, 
-  Filter, 
   Download,
   Calendar,
-  IndianRupee,
   CheckCircle,
   Clock,
   User,
@@ -92,12 +90,12 @@ const mockPayments: PaymentRecord[] = [
 ];
 
 const monthlyPayments = [
-  { month: 'Jan', amount: 750000 },
-  { month: 'Feb', amount: 820000 },
-  { month: 'Mar', amount: 780000 },
-  { month: 'Apr', amount: 900000 },
-  { month: 'May', amount: 850000 },
-  { month: 'Jun', amount: 450000 },
+  { name: 'Jan', month: 'Jan', amount: 750000 },
+  { name: 'Feb', month: 'Feb', amount: 820000 },
+  { name: 'Mar', month: 'Mar', amount: 780000 },
+  { name: 'Apr', month: 'Apr', amount: 900000 },
+  { name: 'May', month: 'May', amount: 850000 },
+  { name: 'Jun', month: 'Jun', amount: 450000 },
 ];
 
 const PaymentHistory: React.FC = () => {
@@ -107,7 +105,7 @@ const PaymentHistory: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateRange, setDateRange] = useState('all');
   const [selectedPayment, setSelectedPayment] = useState<PaymentRecord | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, _setCurrentPage] = useState(1);
   const pageSize = 10;
 
   useEffect(() => {
@@ -124,6 +122,12 @@ const PaymentHistory: React.FC = () => {
     const matchesStatus = statusFilter === 'all' || payment.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  // Paginate filtered payments
+  const paginatedPayments = filteredPayments.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   const totalPaid = filteredPayments.filter(p => p.status === 'completed').reduce((sum, p) => sum + p.amount, 0);
   const pendingAmount = filteredPayments.filter(p => p.status === 'pending').reduce((sum, p) => sum + p.amount, 0);
@@ -272,11 +276,9 @@ const PaymentHistory: React.FC = () => {
         <CardContent>
           <CustomAreaChart
             data={monthlyPayments}
-            xKey="month"
-            yKey="amount"
-            color={CHART_COLORS.primary}
+            areas={[{ dataKey: 'amount', color: CHART_COLORS.primary, name: 'Amount' }]}
+            xAxisKey="name"
             height={200}
-            formatValue={(v) => formatCurrency(v)}
           />
         </CardContent>
       </Card>
@@ -319,13 +321,10 @@ const PaymentHistory: React.FC = () => {
               description="Adjust your filters or record a new payment"
             />
           ) : (
-            <Table
-              data={filteredPayments}
+            <Table<PaymentRecord>
+              data={paginatedPayments}
               columns={columns}
-              currentPage={currentPage}
-              pageSize={pageSize}
-              totalItems={filteredPayments.length}
-              onPageChange={setCurrentPage}
+              keyField="id"
             />
           )}
         </CardContent>

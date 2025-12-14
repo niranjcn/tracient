@@ -20,7 +20,6 @@ import {
   CardHeader, 
   CardTitle, 
   CardContent,
-  CardDescription,
   Button,
   Badge,
   Spinner,
@@ -69,18 +68,18 @@ const mockNodes: NodeStatus[] = [
 ];
 
 const mockMetricsHistory = [
-  { time: '00:00', cpu: 45, memory: 62, requests: 1200 },
-  { time: '02:00', cpu: 38, memory: 58, requests: 800 },
-  { time: '04:00', cpu: 32, memory: 55, requests: 500 },
-  { time: '06:00', cpu: 40, memory: 60, requests: 1000 },
-  { time: '08:00', cpu: 65, memory: 72, requests: 2500 },
-  { time: '10:00', cpu: 78, memory: 78, requests: 3500 },
-  { time: '12:00', cpu: 82, memory: 80, requests: 4000 },
-  { time: '14:00', cpu: 75, memory: 76, requests: 3800 },
-  { time: '16:00', cpu: 70, memory: 74, requests: 3200 },
-  { time: '18:00', cpu: 60, memory: 68, requests: 2800 },
-  { time: '20:00', cpu: 55, memory: 65, requests: 2200 },
-  { time: '22:00', cpu: 48, memory: 62, requests: 1500 },
+  { name: '00:00', time: '00:00', cpu: 45, memory: 62, requests: 1200 },
+  { name: '02:00', time: '02:00', cpu: 38, memory: 58, requests: 800 },
+  { name: '04:00', time: '04:00', cpu: 32, memory: 55, requests: 500 },
+  { name: '06:00', time: '06:00', cpu: 40, memory: 60, requests: 1000 },
+  { name: '08:00', time: '08:00', cpu: 65, memory: 72, requests: 2500 },
+  { name: '10:00', time: '10:00', cpu: 78, memory: 78, requests: 3500 },
+  { name: '12:00', time: '12:00', cpu: 82, memory: 80, requests: 4000 },
+  { name: '14:00', time: '14:00', cpu: 75, memory: 76, requests: 3800 },
+  { name: '16:00', time: '16:00', cpu: 70, memory: 74, requests: 3200 },
+  { name: '18:00', time: '18:00', cpu: 60, memory: 68, requests: 2800 },
+  { name: '20:00', time: '20:00', cpu: 55, memory: 65, requests: 2200 },
+  { name: '22:00', time: '22:00', cpu: 48, memory: 62, requests: 1500 },
 ];
 
 const SystemHealth: React.FC = () => {
@@ -264,10 +263,8 @@ const SystemHealth: React.FC = () => {
             <CardContent>
               <CustomAreaChart
                 data={mockMetricsHistory}
-                yKey="cpu"
-                color={CHART_COLORS.primary}
+                areas={[{ dataKey: 'cpu', color: CHART_COLORS.primary, name: 'CPU' }]}
                 height={250}
-                formatValue={(v: number) => `${v}%`}
               />
             </CardContent>
           </Card>
@@ -407,10 +404,8 @@ const SystemHealth: React.FC = () => {
             <CardContent>
               <CustomLineChart
                 data={mockMetricsHistory}
-                yKey="cpu"
-                color={CHART_COLORS.primary}
+                lines={[{ dataKey: 'cpu', color: CHART_COLORS.primary, name: 'CPU' }]}
                 height={250}
-                formatValue={(v: number) => `${v}%`}
               />
             </CardContent>
           </Card>
@@ -421,10 +416,8 @@ const SystemHealth: React.FC = () => {
             <CardContent>
               <CustomLineChart
                 data={mockMetricsHistory}
-                yKey="memory"
-                color={CHART_COLORS.accent}
+                lines={[{ dataKey: 'memory', color: CHART_COLORS.accent, name: 'Memory' }]}
                 height={250}
-                formatValue={(v: number) => `${v}%`}
               />
             </CardContent>
           </Card>
@@ -435,10 +428,8 @@ const SystemHealth: React.FC = () => {
             <CardContent>
               <CustomAreaChart
                 data={mockMetricsHistory}
-                yKey="requests"
-                color={CHART_COLORS.success}
+                areas={[{ dataKey: 'requests', color: CHART_COLORS.success, name: 'Requests' }]}
                 height={250}
-                formatValue={(v: number) => `${v} req`}
               />
             </CardContent>
           </Card>

@@ -32,7 +32,11 @@ interface BPLStatusData {
   threshold: number;
   lastVerified: string;
   certificateId?: string;
-  eligibleSchemes: typeof WELFARE_SCHEMES;
+  eligibleSchemes: {
+    id: string;
+    name: string;
+    description: string;
+  }[];
   incomeBreakdown: {
     source: string;
     amount: number;
@@ -222,7 +226,7 @@ const BPLStatus: React.FC = () => {
                   <div key={item.source} className="flex items-center gap-3">
                     <div 
                       className="w-3 h-3 rounded-full"
-                      style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }}
+                      style={{ backgroundColor: CHART_COLORS.array[index % CHART_COLORS.array.length] }}
                     />
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
@@ -234,7 +238,7 @@ const BPLStatus: React.FC = () => {
                           className="h-full rounded-full"
                           style={{ 
                             width: `${item.percentage}%`,
-                            backgroundColor: CHART_COLORS[index % CHART_COLORS.length]
+                            backgroundColor: CHART_COLORS.array[index % CHART_COLORS.array.length]
                           }}
                         />
                       </div>

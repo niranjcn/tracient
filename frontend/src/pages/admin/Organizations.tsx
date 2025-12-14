@@ -5,25 +5,15 @@ import {
   Plus,
   Edit2,
   Trash2,
-  Users,
   MapPin,
   Phone,
   Mail,
-  Calendar,
-  CheckCircle2,
-  Clock,
-  XCircle,
   Eye,
-  MoreVertical,
-  Download,
-  Filter
+  Download
 } from 'lucide-react';
 import { 
   Card, 
-  CardHeader, 
-  CardTitle, 
   CardContent,
-  CardDescription,
   Button,
   Input,
   Select,
@@ -215,7 +205,7 @@ const Organizations: React.FC = () => {
   const getTypeBadge = (type: Organization['type']) => {
     const config = {
       employer: { variant: 'primary' as const, label: 'Employer' },
-      government: { variant: 'accent' as const, label: 'Government' },
+      government: { variant: 'primary' as const, label: 'Government' },
       ngo: { variant: 'success' as const, label: 'NGO' },
     };
     return config[type];
@@ -389,7 +379,7 @@ const Organizations: React.FC = () => {
                 placeholder="Search by name, city, or sector..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                icon={<Search className="h-4 w-4" />}
+                leftIcon={<Search className="h-4 w-4" />}
               />
             </div>
             <Select
@@ -414,6 +404,7 @@ const Organizations: React.FC = () => {
           <Table
             columns={columns}
             data={filteredOrgs}
+            keyField="id"
             emptyMessage="No organizations found matching your criteria"
           />
         </CardContent>
@@ -549,7 +540,7 @@ const Organizations: React.FC = () => {
                 Cancel
               </Button>
               <Button
-                variant="error"
+                variant="danger"
                 onClick={() => handleDeleteOrg(selectedOrg.id)}
               >
                 Delete Organization

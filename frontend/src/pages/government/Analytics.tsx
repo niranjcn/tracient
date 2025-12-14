@@ -2,11 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { 
   BarChart3, 
   TrendingUp, 
-  Users, 
   IndianRupee,
   Building2,
   MapPin,
-  Calendar,
   Download,
   RefreshCw
 } from 'lucide-react';
@@ -22,7 +20,6 @@ import {
   Tabs,
   CustomAreaChart,
   CustomBarChart,
-  CustomLineChart,
   CustomPieChart,
   StatCard
 } from '@/components/common';
@@ -37,12 +34,12 @@ const mockAnalyticsData = {
     growthRate: 12.5,
   },
   monthlyTrend: [
-    { month: 'Jan', transactions: 180000, amount: 3500000000 },
-    { month: 'Feb', transactions: 195000, amount: 3800000000 },
-    { month: 'Mar', transactions: 210000, amount: 4100000000 },
-    { month: 'Apr', transactions: 205000, amount: 4000000000 },
-    { month: 'May', transactions: 225000, amount: 4400000000 },
-    { month: 'Jun', transactions: 240000, amount: 4700000000 },
+    { name: 'Jan', month: 'Jan', transactions: 180000, amount: 3500000000 },
+    { name: 'Feb', month: 'Feb', transactions: 195000, amount: 3800000000 },
+    { name: 'Mar', month: 'Mar', transactions: 210000, amount: 4100000000 },
+    { name: 'Apr', month: 'Apr', transactions: 205000, amount: 4000000000 },
+    { name: 'May', month: 'May', transactions: 225000, amount: 4400000000 },
+    { name: 'Jun', month: 'Jun', transactions: 240000, amount: 4700000000 },
   ],
   sectorData: [
     { name: 'Agriculture', transactions: 450000, amount: 8500000000, workers: 180000 },
@@ -59,11 +56,11 @@ const mockAnalyticsData = {
     { name: 'Central', transactions: 256789, amount: 5078900000, bplCount: 19456 },
   ],
   incomeDistribution: [
-    { range: '< ₹50K', count: 125000 },
-    { range: '₹50K-1L', count: 185000 },
-    { range: '₹1L-1.5L', count: 145000 },
-    { range: '₹1.5L-2L', count: 52389 },
-    { range: '> ₹2L', count: 35000 },
+    { name: '< ₹50K', range: '< ₹50K', count: 125000 },
+    { name: '₹50K-1L', range: '₹50K-1L', count: 185000 },
+    { name: '₹1L-1.5L', range: '₹1L-1.5L', count: 145000 },
+    { name: '₹1.5L-2L', range: '₹1.5L-2L', count: 52389 },
+    { name: '> ₹2L', range: '> ₹2L', count: 35000 },
   ],
   wageTypeDistribution: [
     { name: 'Daily Wage', value: 45 },
@@ -155,27 +152,23 @@ const Analytics: React.FC = () => {
         <StatCard
           title="Total Transactions"
           value={formatNumber(data.overview.totalTransactions)}
-          trend={data.overview.growthRate}
-          icon={BarChart3}
-          color="primary"
+          change={data.overview.growthRate}
+          icon={<BarChart3 className="h-5 w-5" />}
         />
         <StatCard
           title="Total Amount"
           value={formatCurrency(data.overview.totalAmount)}
-          icon={IndianRupee}
-          color="success"
+          icon={<IndianRupee className="h-5 w-5" />}
         />
         <StatCard
           title="Average Wage"
           value={formatCurrency(data.overview.averageWage)}
-          icon={TrendingUp}
-          color="accent"
+          icon={<TrendingUp className="h-5 w-5" />}
         />
         <StatCard
           title="Active Employers"
           value={formatNumber(15678)}
-          icon={Building2}
-          color="warning"
+          icon={<Building2 className="h-5 w-5" />}
         />
       </div>
 
@@ -198,11 +191,9 @@ const Analytics: React.FC = () => {
             <CardContent>
               <CustomAreaChart
                 data={data.monthlyTrend}
-                xKey="month"
-                yKey="amount"
-                color={CHART_COLORS.primary}
+                areas={[{ dataKey: 'amount', color: CHART_COLORS.primary, name: 'Amount' }]}
+                xAxisKey="name"
                 height={300}
-                formatValue={(v) => formatCurrency(v)}
               />
             </CardContent>
           </Card>
@@ -247,11 +238,9 @@ const Analytics: React.FC = () => {
             <CardContent>
               <CustomBarChart
                 data={data.sectorData}
-                xKey="name"
-                yKey="transactions"
-                color={CHART_COLORS.accent}
+                bars={[{ dataKey: 'transactions', color: CHART_COLORS.accent, name: 'Transactions' }]}
+                xAxisKey="name"
                 height={300}
-                formatValue={(v) => formatNumber(v)}
               />
             </CardContent>
           </Card>
@@ -263,11 +252,9 @@ const Analytics: React.FC = () => {
             <CardContent>
               <CustomBarChart
                 data={data.sectorData}
-                xKey="name"
-                yKey="amount"
-                color={CHART_COLORS.success}
+                bars={[{ dataKey: 'amount', color: CHART_COLORS.success, name: 'Amount' }]}
+                xAxisKey="name"
                 height={300}
-                formatValue={(v) => formatCurrency(v)}
               />
             </CardContent>
           </Card>
@@ -317,11 +304,9 @@ const Analytics: React.FC = () => {
             <CardContent>
               <CustomBarChart
                 data={data.regionData}
-                xKey="name"
-                yKey="transactions"
-                color={CHART_COLORS.primary}
+                bars={[{ dataKey: 'transactions', color: CHART_COLORS.primary, name: 'Transactions' }]}
+                xAxisKey="name"
                 height={300}
-                formatValue={(v) => formatNumber(v)}
               />
             </CardContent>
           </Card>
@@ -366,11 +351,9 @@ const Analytics: React.FC = () => {
             <CardContent>
               <CustomBarChart
                 data={data.incomeDistribution}
-                xKey="range"
-                yKey="count"
-                color={CHART_COLORS.warning}
+                bars={[{ dataKey: 'count', color: CHART_COLORS.accent, name: 'Workers' }]}
+                xAxisKey="name"
                 height={300}
-                formatValue={(v) => formatNumber(v)}
               />
             </CardContent>
           </Card>
@@ -382,7 +365,7 @@ const Analytics: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {data.incomeDistribution.map((range, index) => {
+                  {data.incomeDistribution.map((range) => {
                     const total = data.incomeDistribution.reduce((sum, r) => sum + r.count, 0);
                     const percentage = (range.count / total) * 100;
                     return (

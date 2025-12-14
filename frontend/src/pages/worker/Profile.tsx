@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { 
   User, 
@@ -32,7 +32,7 @@ import {
 } from '@/components/common';
 import { showToast } from '@/components/common';
 import { formatDate } from '@/utils/formatters';
-import { maskAadhaar, maskPhone } from '@/utils/formatters';
+import { maskAadhaar } from '@/utils/formatters';
 import { z } from 'zod';
 
 const profileSchema = z.object({
@@ -81,7 +81,7 @@ const Profile: React.FC = () => {
     resolver: zodResolver(passwordSchema),
   });
 
-  const onProfileSubmit = async (data: ProfileFormData) => {
+  const onProfileSubmit = async (_data: ProfileFormData) => {
     setIsLoading(true);
     try {
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -93,7 +93,7 @@ const Profile: React.FC = () => {
     }
   };
 
-  const onPasswordSubmit = async (data: PasswordFormData) => {
+  const onPasswordSubmit = async (_data: PasswordFormData) => {
     setIsLoading(true);
     try {
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -228,11 +228,18 @@ const Profile: React.FC = () => {
                     error={profileForm.formState.errors.city?.message}
                     {...profileForm.register('city')}
                   />
-                  <Select
-                    label="State"
-                    options={stateOptions}
-                    placeholder="Select state"
-                    {...profileForm.register('state')}
+                  <Controller
+                    name="state"
+                    control={profileForm.control}
+                    render={({ field }) => (
+                      <Select
+                        label="State"
+                        options={stateOptions}
+                        placeholder="Select state"
+                        value={field.value || ''}
+                        onChange={field.onChange}
+                      />
+                    )}
                   />
                   <Input
                     label="PIN Code"

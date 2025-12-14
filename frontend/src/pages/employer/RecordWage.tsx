@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -7,9 +7,7 @@ import {
   IndianRupee, 
   Calendar, 
   CreditCard,
-  Briefcase,
   Clock,
-  FileText,
   CheckCircle,
   ArrowLeft,
   Search
@@ -19,7 +17,6 @@ import {
   CardHeader, 
   CardTitle, 
   CardContent,
-  CardDescription,
   Button,
   Input,
   Select,
@@ -28,7 +25,7 @@ import {
 } from '@/components/common';
 import { showToast } from '@/components/common';
 import { wageRecordSchema } from '@/utils/validators';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { formatCurrency } from '@/utils/formatters';
 import { z } from 'zod';
 
 type WageFormData = z.infer<typeof wageRecordSchema>;
@@ -56,6 +53,7 @@ const RecordWage: React.FC = () => {
     formState: { errors },
     reset,
     watch,
+    control,
   } = useForm<WageFormData>({
     resolver: zodResolver(wageRecordSchema),
   });
@@ -68,7 +66,7 @@ const RecordWage: React.FC = () => {
       w.id.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const onSubmit = async (data: WageFormData) => {
+  const onSubmit = async (_data: WageFormData) => {
     if (!selectedWorker) {
       showToast.error('Please select a worker');
       return;
@@ -233,19 +231,33 @@ const RecordWage: React.FC = () => {
 
                 {/* Payment Method & Work Type */}
                 <div className="grid md:grid-cols-2 gap-6">
-                  <Select
-                    label="Payment Method *"
-                    options={paymentMethods}
-                    placeholder="Select payment method"
-                    error={errors.paymentMethod?.message}
-                    {...register('paymentMethod')}
+                  <Controller
+                    name="paymentMethod"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        label="Payment Method *"
+                        options={paymentMethods}
+                        placeholder="Select payment method"
+                        error={errors.paymentMethod?.message}
+                        value={field.value || ''}
+                        onChange={field.onChange}
+                      />
+                    )}
                   />
-                  <Select
-                    label="Work Type *"
-                    options={workTypes}
-                    placeholder="Select work type"
-                    error={errors.workType?.message}
-                    {...register('workType')}
+                  <Controller
+                    name="workType"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        label="Work Type *"
+                        options={workTypes}
+                        placeholder="Select work type"
+                        error={errors.workType?.message}
+                        value={field.value || ''}
+                        onChange={field.onChange}
+                      />
+                    )}
                   />
                 </div>
 

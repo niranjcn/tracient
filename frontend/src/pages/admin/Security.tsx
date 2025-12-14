@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { 
   Shield, 
   Key,
-  Lock,
   Users,
   Activity,
   AlertTriangle,
@@ -20,7 +19,6 @@ import {
   CardDescription,
   Button,
   Badge,
-  Input,
   Select,
   Switch
 } from '@/components/common';
@@ -44,7 +42,7 @@ const mockSecurityEvents: SecurityEvent[] = [
 ];
 
 const Security: React.FC = () => {
-  const [events, setEvents] = useState<SecurityEvent[]>(mockSecurityEvents);
+  const [events, _setEvents] = useState<SecurityEvent[]>(mockSecurityEvents);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(true);
   const [sessionTimeout, setSessionTimeout] = useState('30');
   const [passwordPolicy, setPasswordPolicy] = useState('strong');

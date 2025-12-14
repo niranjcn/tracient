@@ -238,7 +238,7 @@ const WorkerDashboard: React.FC = () => {
           <CardContent>
             <CustomAreaChart
               data={data.monthlyIncome.map(d => ({ name: d.month, amount: d.amount }))}
-              areas={[{ dataKey: 'amount', color: CHART_COLORS[0], name: 'Income' }]}
+              areas={[{ dataKey: 'amount', color: CHART_COLORS.array[0], name: 'Income' }]}
               xAxisKey="name"
               height={250}
               showLegend={false}
@@ -254,7 +254,7 @@ const WorkerDashboard: React.FC = () => {
           <CardContent>
             <CustomBarChart
               data={data.incomeBySource.map(d => ({ name: d.source, amount: d.amount }))}
-              bars={[{ dataKey: 'amount', color: CHART_COLORS[1], name: 'Amount' }]}
+              bars={[{ dataKey: 'amount', color: CHART_COLORS.array[1], name: 'Amount' }]}
               xAxisKey="name"
               height={250}
               showLegend={false}

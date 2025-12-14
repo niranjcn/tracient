@@ -84,11 +84,18 @@ export const employerRegistrationSchema = z.object({
 
 // Wage record form schema
 export const wageRecordSchema = z.object({
-  workerID: z.string().min(1, 'Worker is required'),
+  workerID: z.string().min(1, 'Worker is required').optional(),
   amount: amountSchema,
-  jobType: z.enum(['construction', 'agriculture', 'retail', 'manufacturing', 'domestic', 'transport', 'hospitality', 'other']),
-  date: z.string().min(1, 'Date is required'),
-  notes: z.string().optional(),
+  paymentDate: z.string().min(1, 'Payment date is required'),
+  paymentMethod: z.enum(['bank_transfer', 'upi', 'cash', 'cheque'], {
+    errorMap: () => ({ message: 'Please select a payment method' })
+  }),
+  workType: z.enum(['daily_wage', 'weekly', 'monthly', 'contract', 'overtime', 'bonus'], {
+    errorMap: () => ({ message: 'Please select a work type' })
+  }),
+  hoursWorked: z.number().optional(),
+  reference: z.string().optional(),
+  description: z.string().optional(),
 });
 
 // Policy config schema

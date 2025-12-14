@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Shield, 
   Users, 
   Building2, 
   Server,
@@ -10,9 +9,7 @@ import {
   Clock,
   Settings,
   Database,
-  HardDrive,
-  Cpu,
-  MemoryStick
+  Cpu
 } from 'lucide-react';
 import { 
   Card, 
@@ -24,10 +21,9 @@ import {
   Badge,
   Spinner,
   StatCard,
-  CustomLineChart,
-  CustomAreaChart
+  CustomLineChart
 } from '@/components/common';
-import { formatNumber, formatDate } from '@/utils/formatters';
+import { formatNumber } from '@/utils/formatters';
 import { CHART_COLORS } from '@/utils/constants';
 
 const mockDashboardData = {
@@ -57,12 +53,12 @@ const mockDashboardData = {
     { id: '5', action: 'Database maintenance scheduled', user: 'System Admin', time: '3 hours ago', type: 'info' },
   ],
   serverMetrics: [
-    { time: '00:00', cpu: 45, memory: 62, disk: 35 },
-    { time: '04:00', cpu: 38, memory: 58, disk: 35 },
-    { time: '08:00', cpu: 65, memory: 72, disk: 36 },
-    { time: '12:00', cpu: 82, memory: 78, disk: 36 },
-    { time: '16:00', cpu: 75, memory: 75, disk: 37 },
-    { time: '20:00', cpu: 55, memory: 68, disk: 37 },
+    { name: '00:00', time: '00:00', cpu: 45, memory: 62, disk: 35 },
+    { name: '04:00', time: '04:00', cpu: 38, memory: 58, disk: 35 },
+    { name: '08:00', time: '08:00', cpu: 65, memory: 72, disk: 36 },
+    { name: '12:00', time: '12:00', cpu: 82, memory: 78, disk: 36 },
+    { name: '16:00', time: '16:00', cpu: 75, memory: 75, disk: 37 },
+    { name: '20:00', time: '20:00', cpu: 55, memory: 68, disk: 37 },
   ],
   alerts: [
     { id: '1', type: 'warning', message: 'High CPU usage detected on Node 2', time: '10 minutes ago' },
@@ -113,26 +109,22 @@ const AdminDashboard: React.FC = () => {
         <StatCard
           title="Total Users"
           value={formatNumber(data.stats.totalUsers)}
-          icon={Users}
-          color="primary"
+          icon={<Users className="h-5 w-5" />}
         />
         <StatCard
           title="Active Users"
           value={formatNumber(data.stats.activeUsers)}
-          icon={Activity}
-          color="success"
+          icon={<Activity className="h-5 w-5" />}
         />
         <StatCard
           title="Organizations"
           value={formatNumber(data.stats.totalOrganizations)}
-          icon={Building2}
-          color="accent"
+          icon={<Building2 className="h-5 w-5" />}
         />
         <StatCard
           title="System Uptime"
           value={`${data.stats.systemUptime}%`}
-          icon={Server}
-          color="warning"
+          icon={<Server className="h-5 w-5" />}
         />
       </div>
 
@@ -168,10 +160,9 @@ const AdminDashboard: React.FC = () => {
             </div>
             <CustomLineChart
               data={data.serverMetrics}
-              yKey="cpu"
-              color={CHART_COLORS.primary}
+              lines={[{ dataKey: 'cpu', color: CHART_COLORS.primary, name: 'CPU' }]}
+              xAxisKey="name"
               height={200}
-              formatValue={(v: number) => `${v}%`}
             />
           </CardContent>
         </Card>

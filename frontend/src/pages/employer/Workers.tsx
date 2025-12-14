@@ -7,17 +7,13 @@ import {
   Mail,
   Phone,
   CreditCard,
-  MoreVertical,
   Eye,
-  Edit,
   Trash2,
   Download,
   Filter
 } from 'lucide-react';
 import { 
   Card, 
-  CardHeader, 
-  CardTitle, 
   CardContent,
   Button,
   Input,
@@ -107,7 +103,7 @@ const Workers: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [workerToDelete, setWorkerToDelete] = useState<Worker | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, _setCurrentPage] = useState(1);
   const pageSize = 10;
 
   useEffect(() => {
@@ -127,6 +123,12 @@ const Workers: React.FC = () => {
     const matchesStatus = statusFilter === 'all' || worker.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  // Paginate filtered workers
+  const paginatedWorkers = filteredWorkers.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   const handleDeleteWorker = async () => {
     if (!workerToDelete) return;
@@ -178,7 +180,7 @@ const Workers: React.FC = () => {
       key: 'workType',
       header: 'Type',
       render: (worker) => (
-        <Badge variant="outline">{worker.workType}</Badge>
+        <Badge variant="gray">{worker.workType}</Badge>
       ),
     },
     {
@@ -330,7 +332,7 @@ const Workers: React.FC = () => {
             <Select
               options={statusOptions}
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={setStatusFilter}
               className="w-full md:w-40"
             />
             <Button variant="outline">
@@ -357,13 +359,10 @@ const Workers: React.FC = () => {
               }
             />
           ) : (
-            <Table
-              data={filteredWorkers}
+            <Table<Worker>
+              data={paginatedWorkers}
               columns={columns}
-              currentPage={currentPage}
-              pageSize={pageSize}
-              totalItems={filteredWorkers.length}
-              onPageChange={setCurrentPage}
+              keyField="id"
             />
           )}
         </CardContent>

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Users, 
   Search,
   Plus,
   Edit2,
@@ -8,20 +7,11 @@ import {
   UserCheck,
   UserX,
   Shield,
-  Mail,
-  Phone,
-  Calendar,
-  MoreVertical,
-  Filter,
-  Download,
-  RefreshCw
+  Download
 } from 'lucide-react';
 import { 
   Card, 
-  CardHeader, 
-  CardTitle, 
   CardContent,
-  CardDescription,
   Button,
   Input,
   Select,
@@ -168,7 +158,7 @@ const UserManagement: React.FC = () => {
     const config = {
       worker: { variant: 'primary' as const, label: 'Worker' },
       employer: { variant: 'success' as const, label: 'Employer' },
-      government: { variant: 'accent' as const, label: 'Government' },
+      government: { variant: 'primary' as const, label: 'Government' },
       admin: { variant: 'error' as const, label: 'Admin' },
     };
     return config[role];
@@ -360,7 +350,7 @@ const UserManagement: React.FC = () => {
                 placeholder="Search by name or email..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                icon={<Search className="h-4 w-4" />}
+                leftIcon={<Search className="h-4 w-4" />}
               />
             </div>
             <Select
@@ -385,6 +375,7 @@ const UserManagement: React.FC = () => {
           <Table
             columns={columns}
             data={filteredUsers}
+            keyField="id"
             emptyMessage="No users found matching your criteria"
           />
         </CardContent>
@@ -505,7 +496,7 @@ const UserManagement: React.FC = () => {
                 Cancel
               </Button>
               <Button
-                variant="error"
+                variant="danger"
                 onClick={() => handleDeleteUser(selectedUser.id)}
               >
                 Delete User

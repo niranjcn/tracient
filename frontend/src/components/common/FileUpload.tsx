@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { useDropzone } from 'react-dropzone';
+import { useDropzone, FileRejection } from 'react-dropzone';
 import { cn } from '@/utils/helpers';
 import { Upload, File, X, AlertCircle } from 'lucide-react';
 import { formatFileSize } from '@/utils/formatters';
@@ -37,7 +37,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
   const [uploadError, setUploadError] = React.useState<string | null>(null);
 
   const onDrop = useCallback(
-    (acceptedFiles: File[], rejectedFiles: { file: File; errors: { message: string }[] }[]) => {
+    (acceptedFiles: File[], rejectedFiles: FileRejection[]) => {
       setUploadError(null);
 
       if (rejectedFiles.length > 0) {

@@ -2,36 +2,27 @@ import React, { useState, useEffect } from 'react';
 import { 
   FileText, 
   Search,
-  Filter,
   Download,
   RefreshCw,
-  ChevronRight,
   User,
   Building2,
-  Clock,
   CheckCircle2,
   XCircle,
-  Hash,
-  Calendar,
   IndianRupee,
   Eye
 } from 'lucide-react';
 import { 
   Card, 
-  CardHeader, 
-  CardTitle, 
   CardContent,
-  CardDescription,
   Button,
   Input,
   Select,
   Badge,
   Spinner,
   Modal,
-  Table,
-  Tabs
+  Table
 } from '@/components/common';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { formatDate } from '@/utils/formatters';
 
 interface AuditLog {
   id: string;
@@ -215,7 +206,7 @@ const AuditLogs: React.FC = () => {
     const config = {
       wage_recorded: { variant: 'success' as const, icon: IndianRupee },
       worker_registered: { variant: 'primary' as const, icon: User },
-      employer_registered: { variant: 'accent' as const, icon: Building2 },
+      employer_registered: { variant: 'primary' as const, icon: Building2 },
       bpl_status_updated: { variant: 'warning' as const, icon: CheckCircle2 },
       anomaly_flagged: { variant: 'error' as const, icon: XCircle },
       policy_updated: { variant: 'default' as const, icon: FileText },
@@ -381,25 +372,25 @@ const AuditLogs: React.FC = () => {
                 placeholder="Search by transaction ID, performer, or target..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                icon={<Search className="h-4 w-4" />}
+                leftIcon={<Search className="h-4 w-4" />}
               />
             </div>
             <Select
               options={eventTypeOptions}
               value={eventTypeFilter}
-              onChange={(e) => setEventTypeFilter(e.target.value)}
+              onChange={setEventTypeFilter}
               className="w-48"
             />
             <Select
               options={statusOptions}
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={setStatusFilter}
               className="w-36"
             />
             <Select
               options={dateRangeOptions}
               value={dateRange}
-              onChange={(e) => setDateRange(e.target.value)}
+              onChange={setDateRange}
               className="w-40"
             />
           </div>
@@ -412,6 +403,7 @@ const AuditLogs: React.FC = () => {
           <Table
             columns={columns}
             data={filteredLogs}
+            keyField="id"
             emptyMessage="No audit logs found matching your criteria"
           />
         </CardContent>

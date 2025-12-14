@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { 
   User, 
   Shield,
-  Bell,
   Lock,
   Save,
   Camera,
@@ -123,26 +122,26 @@ const Profile: React.FC = () => {
                 label="Full Name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                icon={<User className="h-4 w-4" />}
+                leftIcon={<User className="h-4 w-4" />}
               />
               <Input
                 label="Employee ID"
                 value={formData.employeeId}
                 disabled
-                icon={<Shield className="h-4 w-4" />}
+                leftIcon={<Shield className="h-4 w-4" />}
               />
               <Input
                 label="Email"
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                icon={<Mail className="h-4 w-4" />}
+                leftIcon={<Mail className="h-4 w-4" />}
               />
               <Input
                 label="Phone"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                icon={<Phone className="h-4 w-4" />}
+                leftIcon={<Phone className="h-4 w-4" />}
               />
             </div>
 
@@ -220,19 +219,19 @@ const Profile: React.FC = () => {
                 label="Current Password"
                 type="password"
                 placeholder="Enter current password"
-                icon={<Lock className="h-4 w-4" />}
+                leftIcon={<Lock className="h-4 w-4" />}
               />
               <Input
                 label="New Password"
                 type="password"
                 placeholder="Enter new password"
-                icon={<Lock className="h-4 w-4" />}
+                leftIcon={<Lock className="h-4 w-4" />}
               />
               <Input
                 label="Confirm New Password"
                 type="password"
                 placeholder="Confirm new password"
-                icon={<Lock className="h-4 w-4" />}
+                leftIcon={<Lock className="h-4 w-4" />}
               />
             </div>
 

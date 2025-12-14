@@ -20,10 +20,7 @@ import {
   Button,
   FileUpload,
   Table,
-  Badge,
-  Alert,
-  Modal,
-  Spinner
+  Badge
 } from '@/components/common';
 import { showToast } from '@/components/common';
 import { formatCurrency } from '@/utils/formatters';
@@ -301,7 +298,7 @@ const BulkUpload: React.FC = () => {
                 <Table
                   data={records}
                   columns={columns}
-                  pageSize={10}
+                  keyField="id"
                 />
               </CardContent>
             </Card>

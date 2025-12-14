@@ -1,14 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Settings, 
   Save,
-  History,
   AlertCircle,
-  CheckCircle2,
-  IndianRupee,
   Users,
-  Calendar,
-  RefreshCw,
   Info,
   Edit2
 } from 'lucide-react';
@@ -27,7 +21,7 @@ import {
   Alert,
   Tabs
 } from '@/components/common';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { formatDate } from '@/utils/formatters';
 
 interface PolicyConfig {
   id: string;

@@ -242,7 +242,7 @@ const EmployerDashboard: React.FC = () => {
           <CardContent>
             <CustomAreaChart
               data={data.monthlyPayrollTrend.map(d => ({ name: d.month, amount: d.amount }))}
-              areas={[{ dataKey: 'amount', color: CHART_COLORS[0], name: 'Payroll' }]}
+              areas={[{ dataKey: 'amount', color: CHART_COLORS.array[0], name: 'Payroll' }]}
               xAxisKey="name"
               height={250}
               showLegend={false}
@@ -258,7 +258,7 @@ const EmployerDashboard: React.FC = () => {
           <CardContent>
             <CustomBarChart
               data={data.paymentsByCategory.map(d => ({ name: d.category, amount: d.amount }))}
-              bars={[{ dataKey: 'amount', color: CHART_COLORS[1], name: 'Amount' }]}
+              bars={[{ dataKey: 'amount', color: CHART_COLORS.array[1], name: 'Amount' }]}
               xAxisKey="name"
               height={250}
               showLegend={false}

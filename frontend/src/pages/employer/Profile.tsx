@@ -5,7 +5,6 @@ import {
   Mail, 
   Phone, 
   Shield,
-  Bell,
   Lock,
   Save,
   Camera
@@ -19,7 +18,6 @@ import {
   Button,
   Input,
   Spinner,
-  Avatar,
   Tabs,
   Alert
 } from '@/components/common';
@@ -138,26 +136,26 @@ const Profile: React.FC = () => {
                 label="Company Name"
                 value={formData.companyName}
                 onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
-                icon={<Building2 className="h-4 w-4" />}
+                leftIcon={<Building2 className="h-4 w-4" />}
               />
               <Input
                 label="Contact Person"
                 value={formData.contactPerson}
                 onChange={(e) => setFormData({ ...formData, contactPerson: e.target.value })}
-                icon={<User className="h-4 w-4" />}
+                leftIcon={<User className="h-4 w-4" />}
               />
               <Input
                 label="Email"
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                icon={<Mail className="h-4 w-4" />}
+                leftIcon={<Mail className="h-4 w-4" />}
               />
               <Input
                 label="Phone"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                icon={<Phone className="h-4 w-4" />}
+                leftIcon={<Phone className="h-4 w-4" />}
               />
               <Input
                 label="GSTIN"
@@ -168,7 +166,7 @@ const Profile: React.FC = () => {
                 label="Registration Number"
                 value={formData.registrationNumber}
                 disabled
-                icon={<Shield className="h-4 w-4" />}
+                leftIcon={<Shield className="h-4 w-4" />}
               />
             </div>
 
@@ -273,19 +271,19 @@ const Profile: React.FC = () => {
                 label="Current Password"
                 type="password"
                 placeholder="Enter current password"
-                icon={<Lock className="h-4 w-4" />}
+                leftIcon={<Lock className="h-4 w-4" />}
               />
               <Input
                 label="New Password"
                 type="password"
                 placeholder="Enter new password"
-                icon={<Lock className="h-4 w-4" />}
+                leftIcon={<Lock className="h-4 w-4" />}
               />
               <Input
                 label="Confirm New Password"
                 type="password"
                 placeholder="Confirm new password"
-                icon={<Lock className="h-4 w-4" />}
+                leftIcon={<Lock className="h-4 w-4" />}
               />
             </div>
 
