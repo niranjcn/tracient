@@ -4,7 +4,7 @@ import { TOKEN_KEY, REFRESH_TOKEN_KEY } from '@/utils/constants';
 import mockAuthService from './mockAuthService';
 
 // Toggle this to switch between mock and real auth
-const USE_MOCK_AUTH = true;
+const USE_MOCK_AUTH = false;
 
 export const authService = {
   // Login

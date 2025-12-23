@@ -112,8 +112,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: data.email,
         phone: data.phone,
         password: data.password,
-        aadhaar: data.aadhaarNumber,
-        businessName: data.organizationName,
+        aadhaarNumber: data.aadhaarNumber,
+        companyName: data.organizationName,
         department: data.department,
       };
       await authService.register(apiData as any);

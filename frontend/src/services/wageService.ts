@@ -51,17 +51,17 @@ export const wageService = {
 
   // Get worker income stats
   getWorkerStats: async (workerIDHash: string): Promise<IncomeStats> => {
-    return get(`/worker/stats/${workerIDHash}`);
+    return get(`/workers/stats/${workerIDHash}`);
   },
 
   // Get worker BPL status
   getWorkerBPLStatus: async (workerIDHash: string): Promise<BPLStatus> => {
-    return get(`/worker/bpl-status/${workerIDHash}`);
+    return get(`/workers/bpl-status/${workerIDHash}`);
   },
 
   // Generate QR code for worker
   generateWorkerQR: async (workerIDHash: string): Promise<{ qrData: string; expiresAt: string }> => {
-    return post(`/worker/generate-qr/${workerIDHash}`);
+    return post(`/upi/qr/generate`, { workerHash: workerIDHash });
   },
 
   // Get employer payment summary

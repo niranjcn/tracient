@@ -1,19 +1,20 @@
 # Temporary Mock Login Credentials
 
 ## Overview
-The application is currently configured to use **mock authentication** for testing purposes. No backend API is required.
+The application is currently configured to use **mock authentication** for testing purposes. No backend API is required for login.
 
-## ✅ Login Successfully Configured
+## ✅ Login & QR Testing Configured
 
-All login functionality has been fixed and tested. Use these credentials to access the system:
+All login and QR code generation functionality has been set up with predefined worker accounts.
 
 ## Login Credentials
 
-### 1. Worker Account
+### 1. Worker Account (with pre-registered ID)
 - **Email:** `worker@gmail.com`
 - **Password:** `worker`
+- **Worker ID Hash (Aadhaar):** `aadhar-hash-001`
 - **Dashboard:** Automatically redirects to `/worker/dashboard`
-- **Features:** View wages, BPL status, profile, QR code
+- **Features:** View wages, BPL status, profile, generate QR code
 
 ### 2. Employer Account
 - **Email:** `employer@gmail.com`
@@ -33,20 +34,67 @@ All login functionality has been fixed and tested. Use these credentials to acce
 - **Dashboard:** Automatically redirects to `/admin/dashboard`
 - **Features:** User management, organization management, system monitoring, audit logs
 
+## Testing QR Code & UPI Payments
+
+### Available Pre-Registered Workers
+These worker accounts are pre-registered in the backend and can generate QR codes:
+
+| Worker Hash | Name | Phone | Bank Account |
+|---|---|---|---|
+| `aadhar-hash-001` | Rajesh Kumar | 9876543210 | TRCNT-0001-001 |
+| `aadhar-hash-002` | Priya Singh | 9876543211 | TRCNT-0002-002 |
+| `aadhar-hash-003` | Amit Patel | 9876543212 | TRCNT-0003-003 |
+
+### How to Test QR Code & Payment
+
+1. **Login as Worker:** Use credentials above
+2. **Go to QR Code Page:** Navigate to `/worker/qr-code`
+3. **Generate QR Code:** Click "Generate QR Code"
+4. **Copy Token:** Copy the token from the "Token (for testing)" box
+5. **Simulate Payment:** Run in PowerShell (see backend README):
+
+```powershell
+$body = @{
+    token = "YOUR_COPIED_TOKEN"
+    senderName = "Payer Name"
+    senderUPI = "payer@upi"
+    amount = 500
+} | ConvertTo-Json
+
+Invoke-WebRequest -Uri "http://localhost:5000/api/upi/receive" `
+    -Method POST `
+    -Headers @{"Content-Type"="application/json"} `
+    -Body $body | Select-Object -ExpandProperty Content | ConvertFrom-Json
+```
+
 ## How to Use
 
-1. Start the development server:
+1. Start the backend server:
    ```bash
+   cd backend
+   npm start
+   ```
+
+2. Start the frontend development server:
+   ```bash
+   cd frontend
    npm run dev
    ```
 
-2. Navigate to the application URL (typically `http://localhost:5173`)
+3. Navigate to `http://localhost:5173`
 
-3. You will see the landing page. Click "Login" or navigate to `/login`
+4. Click "Login" or navigate to `/login`
 
-4. Enter any of the credentials above
+5. Enter any of the credentials above
 
-5. Upon successful login, you will be automatically redirected to the appropriate dashboard for your role
+6. Upon successful login, you will be automatically redirected to the appropriate dashboard for your role
+
+## Important Notes
+
+- **Workers must be pre-registered** in the backend system before they can generate QR codes
+- **idHash (Aadhaar Hash)** is the unique identifier for each worker and is assigned at registration
+- In production, workers will be registered only after Aadhaar verification
+- All data is stored in-memory; restart the backend to reset balances
 
 ## What Was Fixed
 

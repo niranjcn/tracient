@@ -354,7 +354,11 @@ const RegisterForm: React.FC = () => {
     setError(null);
     try {
       await registerUser({
-        ...data,
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        password: data.password,
+        aadhaarNumber: data.aadhaar,
         role: 'worker' as UserRole,
       });
       setStep('otp');
@@ -368,7 +372,11 @@ const RegisterForm: React.FC = () => {
     setError(null);
     try {
       await registerUser({
-        ...data,
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        password: data.password,
+        organizationName: data.businessName,
         role: 'employer' as UserRole,
       });
       setStep('otp');

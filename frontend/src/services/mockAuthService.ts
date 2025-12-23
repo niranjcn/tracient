@@ -11,7 +11,7 @@ const MOCK_USERS = {
       email: 'worker@gmail.com',
       role: 'worker',
       orgMSP: 'WorkerMSP',
-      idHash: 'hash_aadhaar_123456789012',
+      idHash: 'aadhar-hash-001', // Must match backend registered worker
       phone: '9876543210',
       status: 'active' as const,
       createdAt: new Date().toISOString(),

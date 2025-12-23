@@ -3,3 +3,4 @@ export { default as authService } from './authService';
 export { default as wageService } from './wageService';
 export { default as userService } from './userService';
 export { default as analyticsService } from './analyticsService';
+export * from './qrService';
