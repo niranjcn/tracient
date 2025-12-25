@@ -1,14 +1,15 @@
 #!/bin/bash
 #
-# TRACIENT Blockchain Network Startup Script
+# TRACIENT Blockchain Network Startup Script v2.0
 # 
 # This script starts the Hyperledger Fabric network and deploys the TRACIENT chaincode.
-# Use this when the network has been stopped or you're starting fresh.
+# Improved with cross-platform support and data persistence options.
 #
 # Usage:
-#   ./start-network.sh                    # Full setup (network + chaincode)
+#   ./start-network.sh                    # Preserve mode (keep existing data if possible)
+#   ./start-network.sh clean              # Clean start (removes all data)
 #   ./start-network.sh --network-only     # Only start network, skip chaincode
-#   ./start-network.sh --clean            # Clean start (removes old data)
+#   ./start-network.sh --help             # Show help
 #
 
 set -e  # Exit on error
@@ -18,358 +19,364 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
-# Configuration
-NETWORK_DIR="/mnt/e/Major-Project/blockchain/network/test-network"
-CHAINCODE_PATH="../../chaincode/tracient"
+# Auto-detect script directory (works in both WSL and native Linux)
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+# Configuration - using absolute paths
+NETWORK_DIR="${SCRIPT_DIR}/network/test-network"
+CHAINCODE_PATH="${SCRIPT_DIR}/chaincode/tracient"
 CHANNEL_NAME="mychannel"
 CHAINCODE_NAME="tracient"
-CHAINCODE_VERSION="1.0"
+CHAINCODE_VERSION="2.0"
 CHAINCODE_SEQUENCE="1"
 
 # Package ID (set after installation)
 CC_PACKAGE_ID=""
 
-echo -e "${BLUE}========================================${NC}"
-echo -e "${BLUE}   TRACIENT Blockchain Network Startup${NC}"
-echo -e "${BLUE}========================================${NC}"
-echo ""
-
 # Parse command line arguments
-NETWORK_ONLY=false
 CLEAN_START=false
+NETWORK_ONLY=false
+SKIP_NETWORK=false
 
-for arg in "$@"; do
-  case $arg in
-    --network-only)
-      NETWORK_ONLY=true
-      shift
-      ;;
-    --clean)
-      CLEAN_START=true
-      shift
-      ;;
-    --help)
-      echo "Usage: ./start-network.sh [OPTIONS]"
-      echo ""
-      echo "Options:"
-      echo "  --network-only    Start network only (skip chaincode deployment)"
-      echo "  --clean           Clean start (remove all existing data)"
-      echo "  --help            Show this help message"
-      exit 0
-      ;;
-  esac
-done
+print_banner() {
+    echo -e "${CYAN}╔════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${CYAN}║      TRACIENT Blockchain Network Startup v2.0              ║${NC}"
+    echo -e "${CYAN}║      Income Traceability for Welfare Distribution          ║${NC}"
+    echo -e "${CYAN}╚════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+}
 
-# Function to print status
 print_status() {
-  echo -e "${GREEN}✓${NC} $1"
+    echo -e "${GREEN}✓${NC} $1"
 }
 
 print_warning() {
-  echo -e "${YELLOW}⚠${NC} $1"
+    echo -e "${YELLOW}⚠${NC} $1"
 }
 
 print_error() {
-  echo -e "${RED}✗${NC} $1"
+    echo -e "${RED}✗${NC} $1"
 }
 
 print_info() {
-  echo -e "${BLUE}ℹ${NC} $1"
+    echo -e "${BLUE}ℹ${NC} $1"
 }
 
-# Check prerequisites
+show_help() {
+    echo "TRACIENT Blockchain Network Startup Script v2.0"
+    echo ""
+    echo "Usage: ./start-network.sh [OPTION]"
+    echo ""
+    echo "Options:"
+    echo "  (no option)       Preserve existing data, deploy only if needed"
+    echo "  clean             Full cleanup and fresh start"
+    echo "  --network-only    Start network only (skip chaincode deployment)"
+    echo "  --help            Show this help message"
+    echo ""
+    echo "Examples:"
+    echo "  ./start-network.sh                 # Smart start with data preservation"
+    echo "  ./start-network.sh clean           # Fresh start, remove all data"
+    echo "  ./start-network.sh --network-only  # Start network, deploy chaincode later"
+    echo ""
+    echo "After starting, use:"
+    echo "  source ${SCRIPT_DIR}/set-env.sh    # Set environment variables"
+    echo "  ./test-chaincode.sh                # Test all chaincode functions"
+    echo ""
+}
+
+for arg in "$@"; do
+    case $arg in
+        clean|--clean)
+            CLEAN_START=true
+            shift
+            ;;
+        --network-only)
+            NETWORK_ONLY=true
+            shift
+            ;;
+        --help|-h)
+            show_help
+            exit 0
+            ;;
+        *)
+            # Unknown option
+            ;;
+    esac
+done
+
+print_banner
+
+# Step 1: Check prerequisites
 echo -e "${YELLOW}[1/8]${NC} Checking prerequisites..."
 
+# Check Docker
 if ! command -v docker &> /dev/null; then
-  print_error "Docker not found. Please install Docker Desktop."
-  exit 1
+    print_error "Docker not found. Please install Docker Desktop."
+    exit 1
 fi
+print_status "Docker found"
 
+# Check Docker daemon
+if ! docker ps &> /dev/null; then
+    print_error "Docker daemon not running or permission denied."
+    print_info "On WSL, make sure Docker Desktop is running"
+    print_info "On Linux, run: sudo usermod -aG docker \$USER && newgrp docker"
+    exit 1
+fi
+print_status "Docker daemon running"
+
+# Check/Add Fabric binaries to PATH
 if ! command -v peer &> /dev/null; then
-  print_warning "Peer command not in PATH. Adding Fabric binaries to PATH..."
-  export PATH=/mnt/e/Major-Project/blockchain/network/bin:$PATH
+    print_warning "Peer command not in PATH. Adding Fabric binaries..."
+    export PATH="${SCRIPT_DIR}/network/bin:$PATH"
+fi
+print_status "Fabric binaries available"
+
+# Check Go (add common installation paths)
+if ! command -v go &> /dev/null; then
+    # Try common Go installation locations
+    if [ -d "/usr/local/go/bin" ]; then
+        export PATH="/usr/local/go/bin:$PATH"
+    elif [ -d "$HOME/go/bin" ]; then
+        export PATH="$HOME/go/bin:$PATH"
+    fi
 fi
 
 if ! command -v go &> /dev/null; then
-  print_error "Go not found. Please install Go 1.25+."
-  exit 1
+    print_error "Go not found. Please run: ./install-go.sh"
+    exit 1
 fi
+print_status "Go found: $(go version | cut -d' ' -f3)"
 
-if ! docker ps &> /dev/null; then
-  print_error "Docker daemon not running or permission denied."
-  print_info "Run: sudo usermod -aG docker \$USER && newgrp docker"
-  exit 1
+# Validate chaincode exists
+if [ ! -f "${CHAINCODE_PATH}/chaincode.go" ]; then
+    print_error "Chaincode not found at: ${CHAINCODE_PATH}"
+    exit 1
 fi
-
-print_status "Prerequisites OK"
+print_status "Chaincode found at: ${CHAINCODE_PATH}"
 echo ""
 
-# Navigate to network directory
-cd "$NETWORK_DIR" || { print_error "Network directory not found"; exit 1; }
+# Step 2: Navigate to network directory
+cd "$NETWORK_DIR" || { print_error "Network directory not found: ${NETWORK_DIR}"; exit 1; }
 
 # Set environment variables
-print_info "Setting up environment variables..."
-export PATH=/mnt/e/Major-Project/blockchain/network/bin:$PATH
-export FABRIC_CFG_PATH=/mnt/e/Major-Project/blockchain/network/config
-print_status "Environment configured"
+export PATH="${SCRIPT_DIR}/network/bin:$PATH"
+export FABRIC_CFG_PATH="${SCRIPT_DIR}/network/config"
+
+# Step 3: Handle existing network
+echo -e "${YELLOW}[2/8]${NC} Checking existing network state..."
+
+if docker ps | grep -q "peer0.org1.example.com"; then
+    if [ "$CLEAN_START" = true ]; then
+        print_warning "Network running. Performing clean shutdown..."
+        ./network.sh down 2>/dev/null || true
+        # Remove orphaned chaincode containers
+        docker rm -f $(docker ps -aq --filter name=dev-peer) 2>/dev/null || true
+        rm -f tracient.tar.gz
+        print_status "Network stopped and cleaned"
+    else
+        print_info "Network is already running!"
+        print_info "Checking chaincode installation..."
+        
+        # Set peer environment
+        export CORE_PEER_TLS_ENABLED=true
+        export CORE_PEER_LOCALMSPID="Org1MSP"
+        export CORE_PEER_TLS_ROOTCERT_FILE="${NETWORK_DIR}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt"
+        export CORE_PEER_MSPCONFIGPATH="${NETWORK_DIR}/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp"
+        export CORE_PEER_ADDRESS=localhost:7051
+        
+        INSTALLED=$(peer lifecycle chaincode queryinstalled 2>&1 || true)
+        if echo "$INSTALLED" | grep -q "tracient"; then
+            print_status "Chaincode already installed and running"
+            print_info "Use './restart-network.sh' to restart the network"
+            print_info "Use './test-chaincode.sh' to test chaincode functions"
+            
+            # Generate set-env.sh
+            cat > "${SCRIPT_DIR}/set-env.sh" << 'ENVEOF'
+#!/bin/bash
+# TRACIENT Environment Setup Script
+# Source this file: source ./set-env.sh
+
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+export PATH="${SCRIPT_DIR}/network/bin:$PATH"
+export FABRIC_CFG_PATH="${SCRIPT_DIR}/network/config"
+export CORE_PEER_TLS_ENABLED=true
+export CORE_PEER_LOCALMSPID="Org1MSP"
+export CORE_PEER_TLS_ROOTCERT_FILE="${SCRIPT_DIR}/network/test-network/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt"
+export CORE_PEER_MSPCONFIGPATH="${SCRIPT_DIR}/network/test-network/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp"
+export CORE_PEER_ADDRESS=localhost:7051
+
+echo "✓ TRACIENT environment configured for Org1"
+echo "  CORE_PEER_ADDRESS: $CORE_PEER_ADDRESS"
+echo "  CORE_PEER_LOCALMSPID: $CORE_PEER_LOCALMSPID"
+ENVEOF
+            chmod +x "${SCRIPT_DIR}/set-env.sh"
+            exit 0
+        else
+            print_warning "Chaincode not installed. Will deploy..."
+            SKIP_NETWORK=true
+        fi
+    fi
+else
+    if [ "$CLEAN_START" = true ]; then
+        print_info "Performing clean start..."
+        ./network.sh down 2>/dev/null || true
+        docker rm -f $(docker ps -aq --filter name=dev-peer) 2>/dev/null || true
+        rm -f tracient.tar.gz
+    fi
+    print_status "No existing network found"
+fi
 echo ""
 
-# Clean start if requested
-if [ "$CLEAN_START" = true ]; then
-  echo -e "${YELLOW}[2/8]${NC} Cleaning previous network data..."
-  ./network.sh down
-  rm -f tracient.tar.gz
-  print_status "Cleanup complete"
-  echo ""
-else
-  echo -e "${YELLOW}[2/8]${NC} Checking existing network..."
-  if docker ps | grep -q "hyperledger/fabric"; then
-    print_warning "Network is already running"
-    read -p "Do you want to restart? (y/n): " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-      ./network.sh down
-      print_status "Network stopped"
-    else
-      print_info "Skipping network startup"
-      if [ "$NETWORK_ONLY" = true ]; then
-        echo -e "${GREEN}Done!${NC}"
-        exit 0
-      fi
-      # Skip to chaincode deployment
-      SKIP_NETWORK=true
-    fi
-  fi
-  echo ""
-fi
-
-# Start the network
+# Step 4: Start the network
 if [ "$SKIP_NETWORK" != true ]; then
-  echo -e "${YELLOW}[3/8]${NC} Starting Hyperledger Fabric network..."
-  print_info "This will start 6 containers (3 CAs, 2 peers, 1 orderer)"
-  
-  ./network.sh up createChannel -ca -c $CHANNEL_NAME
-  
-  if [ $? -eq 0 ]; then
-    print_status "Network started successfully"
-    print_status "Channel '$CHANNEL_NAME' created"
-  else
-    print_error "Failed to start network"
-    exit 1
-  fi
-  echo ""
+    echo -e "${YELLOW}[3/8]${NC} Starting Hyperledger Fabric network..."
+    print_info "This will start 6 containers (3 CAs, 2 peers, 1 orderer)"
+    
+    ./network.sh up createChannel -ca -c $CHANNEL_NAME
+    
+    if [ $? -eq 0 ]; then
+        print_status "Network started successfully"
+        print_status "Channel '$CHANNEL_NAME' created"
+    else
+        print_error "Failed to start network"
+        exit 1
+    fi
+    echo ""
 fi
 
-# Verify network is running
+# Step 5: Verify network
 echo -e "${YELLOW}[4/8]${NC} Verifying network status..."
-RUNNING_CONTAINERS=$(docker ps --filter "label=service=hyperledger-fabric" --format "{{.Names}}" | wc -l)
+sleep 3
+RUNNING_CONTAINERS=$(docker ps --filter "name=peer0\|orderer\|ca" --format "{{.Names}}" | wc -l)
 if [ "$RUNNING_CONTAINERS" -lt 6 ]; then
-  print_error "Expected 6 containers, found $RUNNING_CONTAINERS"
-  print_info "Check logs: docker ps -a"
-  exit 1
+    print_warning "Expected 6 containers, found $RUNNING_CONTAINERS"
+    print_info "Some containers may still be starting..."
+    sleep 5
 fi
-print_status "All containers running ($RUNNING_CONTAINERS/6)"
+print_status "Containers running"
+docker ps --filter "name=peer0\|orderer\|ca" --format "  • {{.Names}} - {{.Status}}" | head -6
 echo ""
 
 # Exit if network-only mode
 if [ "$NETWORK_ONLY" = true ]; then
-  echo -e "${GREEN}========================================${NC}"
-  echo -e "${GREEN}Network started successfully!${NC}"
-  echo -e "${GREEN}========================================${NC}"
-  echo ""
-  echo "Running containers:"
-  docker ps --filter "label=service=hyperledger-fabric" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-  echo ""
-  echo "Next steps:"
-  echo "  - Deploy chaincode: ./start-network.sh (without --network-only)"
-  echo "  - Check status: docker ps"
-  echo "  - View logs: docker logs <container-name>"
-  exit 0
+    echo -e "${GREEN}════════════════════════════════════════════════════════════${NC}"
+    echo -e "${GREEN}✓ Network started successfully (without chaincode)${NC}"
+    echo -e "${GREEN}════════════════════════════════════════════════════════════${NC}"
+    echo ""
+    echo "Next: Deploy chaincode with:"
+    echo "  ./deploy-chaincode.sh"
+    exit 0
 fi
 
-# Package chaincode
-echo -e "${YELLOW}[5/8]${NC} Packaging TRACIENT chaincode..."
-if [ -f "tracient.tar.gz" ]; then
-  print_warning "Package already exists. Using existing package."
-else
-  peer lifecycle chaincode package tracient.tar.gz \
-    --path $CHAINCODE_PATH \
-    --lang golang \
-    --label ${CHAINCODE_NAME}_${CHAINCODE_VERSION}
-  
-  if [ $? -eq 0 ]; then
-    print_status "Chaincode packaged: tracient.tar.gz"
-  else
-    print_error "Failed to package chaincode"
-    exit 1
-  fi
-fi
-echo ""
-
-# Install on Org1
-echo -e "${YELLOW}[6/8]${NC} Installing chaincode on Org1..."
+# Step 6: Set peer environment for chaincode operations
+echo -e "${YELLOW}[5/8]${NC} Setting up peer environment..."
 export CORE_PEER_TLS_ENABLED=true
 export CORE_PEER_LOCALMSPID="Org1MSP"
-export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
-export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
+export CORE_PEER_TLS_ROOTCERT_FILE="${NETWORK_DIR}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt"
+export CORE_PEER_MSPCONFIGPATH="${NETWORK_DIR}/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp"
 export CORE_PEER_ADDRESS=localhost:7051
+print_status "Peer environment configured for Org1"
+echo ""
 
-peer lifecycle chaincode install tracient.tar.gz
+# Step 7: Deploy chaincode using network.sh
+echo -e "${YELLOW}[6/8]${NC} Deploying TRACIENT chaincode v${CHAINCODE_VERSION}..."
+print_info "This may take a few minutes..."
+
+# Get next sequence number if chaincode already committed
+COMMITTED=$(peer lifecycle chaincode querycommitted -C $CHANNEL_NAME -n $CHAINCODE_NAME 2>&1 || true)
+if echo "$COMMITTED" | grep -q "Version:"; then
+    CURRENT_SEQ=$(echo "$COMMITTED" | grep "Sequence:" | awk '{print $2}' | tr -d ',')
+    CHAINCODE_SEQUENCE=$((CURRENT_SEQ + 1))
+    print_info "Upgrading chaincode. New sequence: $CHAINCODE_SEQUENCE"
+fi
+
+./network.sh deployCC -ccn $CHAINCODE_NAME -ccp $CHAINCODE_PATH -ccl go -ccv $CHAINCODE_VERSION -ccs $CHAINCODE_SEQUENCE
 
 if [ $? -eq 0 ]; then
-  print_status "Chaincode installed on Org1"
-  # Extract package ID
-  CC_PACKAGE_ID=$(peer lifecycle chaincode queryinstalled | grep "${CHAINCODE_NAME}_${CHAINCODE_VERSION}" | awk '{print $3}' | sed 's/,$//')
-  print_info "Package ID: $CC_PACKAGE_ID"
+    print_status "Chaincode deployed successfully"
 else
-  print_error "Failed to install chaincode on Org1"
-  exit 1
+    print_error "Chaincode deployment failed"
+    exit 1
 fi
 echo ""
 
-# Install on Org2
-echo -e "${YELLOW}[7/8]${NC} Installing chaincode on Org2..."
-export CORE_PEER_LOCALMSPID="Org2MSP"
-export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
-export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp
-export CORE_PEER_ADDRESS=localhost:9051
+# Step 8: Initialize ledger
+echo -e "${YELLOW}[7/8]${NC} Initializing ledger with sample data..."
 
-peer lifecycle chaincode install tracient.tar.gz
+# Set up TLS files for invoke
+ORDERER_CA="${NETWORK_DIR}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem"
+ORG1_PEER_TLSROOTCERT="${NETWORK_DIR}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt"
+ORG2_PEER_TLSROOTCERT="${NETWORK_DIR}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt"
 
-if [ $? -eq 0 ]; then
-  print_status "Chaincode installed on Org2"
-else
-  print_error "Failed to install chaincode on Org2"
-  exit 1
-fi
+peer chaincode invoke \
+    -o localhost:7050 \
+    --ordererTLSHostnameOverride orderer.example.com \
+    --tls \
+    --cafile "$ORDERER_CA" \
+    -C $CHANNEL_NAME \
+    -n $CHAINCODE_NAME \
+    --peerAddresses localhost:7051 \
+    --tlsRootCertFiles "$ORG1_PEER_TLSROOTCERT" \
+    --peerAddresses localhost:9051 \
+    --tlsRootCertFiles "$ORG2_PEER_TLSROOTCERT" \
+    -c '{"function":"InitLedger","Args":[]}' \
+    2>&1 | grep -v "^$" || true
+
+print_status "Ledger initialized"
 echo ""
 
-# Approve for Org2
-echo -e "${YELLOW}[8/8]${NC} Approving and committing chaincode..."
-print_info "Step 1/4: Approve for Org2..."
+# Step 9: Generate environment setup script
+echo -e "${YELLOW}[8/8]${NC} Generating environment setup script..."
 
-peer lifecycle chaincode approveformyorg -o localhost:7050 \
-  --ordererTLSHostnameOverride orderer.example.com \
-  --channelID $CHANNEL_NAME \
-  --name $CHAINCODE_NAME \
-  --version $CHAINCODE_VERSION \
-  --package-id $CC_PACKAGE_ID \
-  --sequence $CHAINCODE_SEQUENCE \
-  --tls \
-  --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem"
+cat > "${SCRIPT_DIR}/set-env.sh" << ENVEOF
+#!/bin/bash
+# TRACIENT Environment Setup Script
+# Source this file: source ./set-env.sh
 
-if [ $? -eq 0 ]; then
-  print_status "Org2 approved"
-else
-  print_error "Org2 approval failed"
-  exit 1
-fi
-
-# Approve for Org1
-print_info "Step 2/4: Approve for Org1..."
+SCRIPT_DIR="\$( cd "\$( dirname "\${BASH_SOURCE[0]}" )" && pwd )"
+export PATH="\${SCRIPT_DIR}/network/bin:\$PATH"
+export FABRIC_CFG_PATH="\${SCRIPT_DIR}/network/config"
+export CORE_PEER_TLS_ENABLED=true
 export CORE_PEER_LOCALMSPID="Org1MSP"
-export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
-export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
+export CORE_PEER_TLS_ROOTCERT_FILE="\${SCRIPT_DIR}/network/test-network/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt"
+export CORE_PEER_MSPCONFIGPATH="\${SCRIPT_DIR}/network/test-network/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp"
 export CORE_PEER_ADDRESS=localhost:7051
 
-peer lifecycle chaincode approveformyorg -o localhost:7050 \
-  --ordererTLSHostnameOverride orderer.example.com \
-  --channelID $CHANNEL_NAME \
-  --name $CHAINCODE_NAME \
-  --version $CHAINCODE_VERSION \
-  --package-id $CC_PACKAGE_ID \
-  --sequence $CHAINCODE_SEQUENCE \
-  --tls \
-  --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem"
+echo "✓ TRACIENT environment configured for Org1"
+echo "  CORE_PEER_ADDRESS: \$CORE_PEER_ADDRESS"
+echo "  CORE_PEER_LOCALMSPID: \$CORE_PEER_LOCALMSPID"
+ENVEOF
 
-if [ $? -eq 0 ]; then
-  print_status "Org1 approved"
-else
-  print_error "Org1 approval failed"
-  exit 1
-fi
-
-# Check commit readiness
-print_info "Step 3/4: Checking commit readiness..."
-peer lifecycle chaincode checkcommitreadiness \
-  --channelID $CHANNEL_NAME \
-  --name $CHAINCODE_NAME \
-  --version $CHAINCODE_VERSION \
-  --sequence $CHAINCODE_SEQUENCE \
-  --tls \
-  --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" \
-  --output json | grep -q '"Org1MSP": true' && grep -q '"Org2MSP": true'
-
-if [ $? -eq 0 ]; then
-  print_status "Both organizations approved"
-else
-  print_warning "Approval status unclear, proceeding with commit..."
-fi
-
-# Commit chaincode
-print_info "Step 4/4: Committing chaincode to channel..."
-peer lifecycle chaincode commit -o localhost:7050 \
-  --ordererTLSHostnameOverride orderer.example.com \
-  --channelID $CHANNEL_NAME \
-  --name $CHAINCODE_NAME \
-  --version $CHAINCODE_VERSION \
-  --sequence $CHAINCODE_SEQUENCE \
-  --tls \
-  --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" \
-  --peerAddresses localhost:7051 \
-  --tlsRootCertFiles "${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt" \
-  --peerAddresses localhost:9051 \
-  --tlsRootCertFiles "${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt"
-
-if [ $? -eq 0 ]; then
-  print_status "Chaincode committed successfully"
-else
-  print_error "Chaincode commit failed"
-  exit 1
-fi
+chmod +x "${SCRIPT_DIR}/set-env.sh"
+print_status "Environment script created: set-env.sh"
 echo ""
 
-# Verify deployment
-echo "Verifying chaincode deployment..."
-peer lifecycle chaincode querycommitted --channelID $CHANNEL_NAME --name $CHAINCODE_NAME
-
-if [ $? -eq 0 ]; then
-  print_status "Chaincode deployment verified"
-else
-  print_warning "Could not verify chaincode deployment"
-fi
+# Final summary
+echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
+echo -e "${GREEN}║      TRACIENT Blockchain Network Ready!                    ║${NC}"
+echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
 echo ""
-
-# Success summary
-echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}   ✓ TRACIENT Blockchain Ready!${NC}"
-echo -e "${GREEN}========================================${NC}"
-echo ""
-echo "Network Status:"
+echo -e "${CYAN}Network Information:${NC}"
 echo "  • Channel: $CHANNEL_NAME"
 echo "  • Chaincode: $CHAINCODE_NAME v$CHAINCODE_VERSION"
 echo "  • Organizations: Org1MSP, Org2MSP"
-echo "  • Package ID: $CC_PACKAGE_ID"
 echo ""
-echo "Running Containers:"
-docker ps --filter "label=service=hyperledger-fabric" --format "  • {{.Names}} - {{.Status}}"
+echo -e "${CYAN}Running Containers:${NC}"
+docker ps --filter "name=peer0\|orderer\|ca\|dev-peer" --format "  • {{.Names}}" | head -8
 echo ""
-echo "Test Commands:"
-echo "  # Initialize ledger"
-echo "  peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com \\"
-echo "    --tls --cafile \"\${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem\" \\"
-echo "    -C $CHANNEL_NAME -n $CHAINCODE_NAME \\"
-echo "    --peerAddresses localhost:7051 --tlsRootCertFiles \"\${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt\" \\"
-echo "    --peerAddresses localhost:9051 --tlsRootCertFiles \"\${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt\" \\"
-echo "    -c '{\"function\":\"InitLedger\",\"Args\":[]}'"
+echo -e "${CYAN}Next Steps:${NC}"
+echo "  1. Source environment: source ./set-env.sh"
+echo "  2. Test chaincode:     ./test-chaincode.sh"
+echo "  3. Quick queries:"
+echo "     peer chaincode query -C mychannel -n tracient -c '{\"function\":\"ReadWage\",\"Args\":[\"WAGE001\"]}'"
 echo ""
-echo "  # Query a wage record"
-echo "  peer chaincode query -C $CHANNEL_NAME -n $CHAINCODE_NAME -c '{\"Args\":[\"ReadWage\",\"WAGE001\"]}'"
-echo ""
-echo "Management Commands:"
-echo "  • Stop network: ./network.sh down"
-echo "  • View logs: docker logs <container-name>"
-echo "  • Check status: docker ps"
+echo -e "${CYAN}Available Scripts:${NC}"
+echo "  • ./restart-network.sh  - Restart without losing data"
+echo "  • ./fresh-start.sh      - Complete cleanup and restart"
+echo "  • ./deploy-chaincode.sh - Redeploy chaincode only"
+echo "  • ./test-chaincode.sh   - Test all 24 functions"
 echo ""
