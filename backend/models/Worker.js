@@ -11,6 +11,14 @@ const addressSchema = new mongoose.Schema({
 
 // Bank account sub-schema for multiple accounts
 const bankAccountSchema = new mongoose.Schema({
+  // Link to worker's Aadhaar hash (auto-assigned)
+  workerIdHash: {
+    type: String,
+    required: true,
+    index: true
+  },
+  
+  // User-provided account details
   accountNumber: {
     type: String,
     required: true
@@ -27,11 +35,57 @@ const bankAccountSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  country: {
+    type: String,
+    default: 'IN',
+    enum: ['IN', 'US', 'GB', 'AU', 'CA', 'NZ']
+  },
   accountType: {
     type: String,
     enum: ['savings', 'current', 'other'],
     default: 'savings'
   },
+  
+  // Balance and income tracking
+  balance: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  balanceLastUpdated: Date,
+  monthlyIncome: {
+    type: Number,
+    default: 0
+  },
+  
+  // Blockchain metadata (for future integration)
+  blockchainMetadata: {
+    totalTransactionCount: {
+      type: Number,
+      default: 0
+    },
+    lastBlockHash: String,
+    lastSyncedAt: Date
+  },
+  
+  // AI Model Features (minimal - for future anomaly detection)
+  aiFeatures: {
+    unverified_rate: { type: Number, default: 0 },
+    weekend_pct: { type: Number, default: 0 },
+    night_hours_pct: { type: Number, default: 0 },
+    num_unique_sources: { type: Number, default: 0 },
+    income_cv: { type: Number, default: 0 },
+    lastCalculated: Date
+  },
+  
+  // Anomaly detection results (for future use)
+  anomalyDetection: {
+    isAnomaly: { type: Boolean, default: false },
+    anomalyProbability: { type: Number, default: 0 },
+    lastChecked: Date
+  },
+  
+  // Metadata
   isDefault: {
     type: Boolean,
     default: false

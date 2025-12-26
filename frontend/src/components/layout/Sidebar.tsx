@@ -19,7 +19,11 @@ import {
   BadgeCheck,
   Heart,
   X,
+<<<<<<< HEAD
   UsersRound
+=======
+  CreditCard
+>>>>>>> cbdb3400abbcabcd54ac9c9696e299c95e341635
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/utils/helpers';
@@ -43,9 +47,15 @@ const getNavItems = (role: UserRole): NavItem[] => {
       return [
         { label: 'Dashboard', icon: LayoutDashboard, path: '/worker/dashboard' },
         { label: 'Wage History', icon: History, path: '/worker/wages' },
+        { label: 'Bank Accounts', icon: CreditCard, path: '/worker/bank-accounts' },
         { label: 'BPL Status', icon: BadgeCheck, path: '/worker/bpl-status' },
+<<<<<<< HEAD
         { label: 'Family', icon: UsersRound, path: '/worker/family' },
         { label: 'QR Code', icon: QrCode, path: '/worker/qr-code' },
+=======
+        { label: 'Payments', icon: QrCode, path: '/worker/generate-qr' },
+        { label: 'Receive Payment', icon: Wallet, path: '/scan-qr' },
+>>>>>>> cbdb3400abbcabcd54ac9c9696e299c95e341635
         { label: 'Welfare Benefits', icon: Heart, path: '/worker/benefits' },
         { label: 'Profile', icon: UserCog, path: '/worker/profile' },
       ];
