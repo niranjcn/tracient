@@ -45,7 +45,8 @@ const getNavItems = (role: UserRole): NavItem[] => {
         { label: 'Wage History', icon: History, path: '/worker/wages' },
         { label: 'Bank Accounts', icon: CreditCard, path: '/worker/bank-accounts' },
         { label: 'BPL Status', icon: BadgeCheck, path: '/worker/bpl-status' },
-        { label: 'QR Code', icon: QrCode, path: '/worker/qr-code' },
+        { label: 'Payments', icon: QrCode, path: '/worker/generate-qr' },
+        { label: 'Receive Payment', icon: Wallet, path: '/scan-qr' },
         { label: 'Welfare Benefits', icon: Heart, path: '/worker/benefits' },
         { label: 'Profile', icon: UserCog, path: '/worker/profile' },
       ];

@@ -3,3 +3,5 @@ export { default as WageHistory } from './WageHistory';
 export { default as BPLStatus } from './BPLStatus';
 export { default as WorkerProfile } from './Profile';
 export { default as BankAccounts } from './BankAccounts';
+export { default as GenerateQR } from './GenerateQR';
+export { default as ScanQR } from './ScanQR';
