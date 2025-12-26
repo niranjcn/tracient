@@ -106,8 +106,9 @@ if echo "$COMMITTED" | grep -q "Version:"; then
     
     print_info "Current chaincode: v${CURRENT_VERSION}, sequence ${CURRENT_SEQ}"
     
-    # Auto-increment sequence
-    CHAINCODE_SEQUENCE=$((CURRENT_SEQ + 1))
+    # Auto-increment sequence (handle decimal version numbers)
+    CURRENT_SEQ_INT=$(echo "$CURRENT_SEQ" | cut -d'.' -f1)
+    CHAINCODE_SEQUENCE=$((CURRENT_SEQ_INT + 1))
     print_info "Will deploy: v${CHAINCODE_VERSION}, sequence ${CHAINCODE_SEQUENCE}"
 else
     print_info "No existing chaincode found. Fresh deployment."
@@ -121,13 +122,22 @@ print_info "This may take a few minutes..."
 # Remove old package if exists
 rm -f "${NETWORK_DIR}/tracient.tar.gz" 2>/dev/null || true
 
+# Check if collections config exists
+COLLECTIONS_CONFIG="${CHAINCODE_PATH}/collections_config.json"
+COLLECTIONS_FLAG=""
+if [ -f "$COLLECTIONS_CONFIG" ]; then
+    print_info "Private data collections config found"
+    COLLECTIONS_FLAG="-cccg ${COLLECTIONS_CONFIG}"
+fi
+
 # Deploy using network.sh
 ./network.sh deployCC \
     -ccn $CHAINCODE_NAME \
     -ccp $CHAINCODE_PATH \
     -ccl go \
     -ccv $CHAINCODE_VERSION \
-    -ccs $CHAINCODE_SEQUENCE
+    -ccs $CHAINCODE_SEQUENCE \
+    $COLLECTIONS_FLAG
 
 if [ $? -ne 0 ]; then
     print_error "Chaincode deployment failed"
