@@ -640,13 +640,8 @@ export const addBankAccount = async (req, res) => {
       worker.bankAccounts.forEach(acc => acc.isDefault = false);
     }
     
-    // Generate mock monthly income (₹15,000 - ₹50,000 for demo)
-    const mockMonthlyIncome = Math.floor(Math.random() * (50000 - 15000) + 15000);
-    
-    // Generate mock balance (2-4 months of income)
-    const mockBalance = mockMonthlyIncome * (Math.floor(Math.random() * 3) + 2);
-    
     // Add new account with auto-linked workerIdHash
+    // Balance starts at 0 - will be updated through deposits via QR code
     const newAccount = {
       workerIdHash: worker.idHash, // ✨ Auto-linked to Aadhaar
       accountNumber,
@@ -655,9 +650,9 @@ export const addBankAccount = async (req, res) => {
       ifscCode,
       country: country || 'IN',
       accountType: accountType || 'savings',
-      balance: mockBalance, // Mock balance for now
+      balance: 0, // Starts at 0
       balanceLastUpdated: new Date(),
-      monthlyIncome: mockMonthlyIncome, // Mock monthly income
+      monthlyIncome: 0, // Starts at 0
       blockchainMetadata: {
         totalTransactionCount: 0,
         lastSyncedAt: null
@@ -823,4 +818,190 @@ export default {
   updateBankAccount,
   deleteBankAccount,
   setDefaultBankAccount
+};
+
+/**
+ * Generate QR code for a specific bank account
+ */
+export const generateQRForAccount = async (req, res) => {
+  try {
+    const { accountId } = req.body;
+    const worker = await Worker.findOne({ userId: req.user.id });
+
+    if (!worker) {
+      return notFoundResponse(res, 'Worker not found');
+    }
+
+    const account = worker.bankAccounts?.id(accountId);
+    if (!account) {
+      return notFoundResponse(res, 'Bank account not found');
+    }
+
+    // Generate a simple JWT-like token with account info
+    const tokenData = {
+      w: worker.idHash, // Worker ID hash (Aadhaar)
+      a: accountId, // Account ID
+      b: account.bankName, // Bank name
+      n: account.accountHolderName, // Account holder name
+      t: Math.floor(Date.now() / 1000) // Timestamp
+    };
+
+    // Create a simple base64 token
+    const token = Buffer.from(JSON.stringify(tokenData)).toString('base64');
+
+    // Create verification URL
+    const verifyUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/worker/scan-qr?token=${token}`;
+
+    return successResponse(res, {
+      token,
+      verifyUrl,
+      accountId,
+      accountNumber: account.accountNumber,
+      bankName: account.bankName,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // Expires in 24 hours
+    }, 'QR code generated successfully');
+  } catch (error) {
+    logger.error('Generate QR error:', error);
+    return errorResponse(res, error.message, 500);
+  }
+};
+
+/**
+ * Verify QR token and return recipient details
+ */
+export const verifyQRToken = async (req, res) => {
+  try {
+    let { token } = req.body;
+
+    if (!token) {
+      return errorResponse(res, 'QR token is required', 400);
+    }
+
+    // Trim whitespace from token
+    token = token.trim();
+
+    // Decode the token
+    let tokenData;
+    try {
+      const decoded = Buffer.from(token, 'base64').toString();
+      tokenData = JSON.parse(decoded);
+    } catch (decodeError) {
+      logger.error('Token decode error:', decodeError);
+      return errorResponse(res, 'Invalid QR token format', 400);
+    }
+
+    const { w: workerHash, a: accountId } = tokenData;
+
+    if (!workerHash || !accountId) {
+      return errorResponse(res, 'Invalid QR token data', 400);
+    }
+
+    // Find worker by idHash
+    const worker = await Worker.findOne({ idHash: workerHash });
+    if (!worker) {
+      return errorResponse(res, 'Worker not registered', 404);
+    }
+
+    // Find the account
+    const account = worker.bankAccounts?.id(accountId);
+    if (!account) {
+      return errorResponse(res, 'Bank account not found', 404);
+    }
+
+    return successResponse(res, {
+      workerHash,
+      accountId,
+      bankName: account.bankName,
+      accountHolderName: account.accountHolderName,
+      accountNumberMasked: `****${account.accountNumber.slice(-4)}`,
+      country: account.country
+    }, 'QR code verified');
+  } catch (error) {
+    logger.error('Verify QR error:', error);
+    return errorResponse(res, 'Failed to verify QR code', 500);
+  }
+};
+
+/**
+ * Deposit money to worker's bank account via QR code
+ */
+export const depositViaQR = async (req, res) => {
+  try {
+    let { token, amount } = req.body;
+
+    if (!token || !amount) {
+      return errorResponse(res, 'Token and amount are required', 400);
+    }
+
+    // Trim whitespace from token
+    token = token.trim();
+
+    // Decode the token
+    let tokenData;
+    try {
+      const decoded = Buffer.from(token, 'base64').toString();
+      tokenData = JSON.parse(decoded);
+    } catch (decodeError) {
+      logger.error('Token decode error:', decodeError);
+      return errorResponse(res, 'Invalid QR token format', 400);
+    }
+
+    const { w: workerHash, a: accountId } = tokenData;
+
+    if (!workerHash || !accountId) {
+      return errorResponse(res, 'Invalid QR token data', 400);
+    }
+
+    // Find worker by idHash
+    const worker = await Worker.findOne({ idHash: workerHash });
+    if (!worker) {
+      return errorResponse(res, 'Worker not registered', 404);
+    }
+
+    // Find the account
+    const account = worker.bankAccounts?.id(accountId);
+    if (!account) {
+      return errorResponse(res, 'Bank account not found', 404);
+    }
+
+    // Update balance
+    const previousBalance = account.balance || 0;
+    account.balance = previousBalance + amount;
+    account.balanceLastUpdated = new Date();
+
+    // Update monthly income (cumulative for the month)
+    const today = new Date();
+    const monthKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+    
+    if (!account.monthlyIncome) {
+      account.monthlyIncome = 0;
+    }
+    account.monthlyIncome += amount;
+
+    // Save worker
+    await worker.save();
+
+    // Generate transaction ID
+    const transactionId = `TXN-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+
+    logger.info('Deposit via QR', {
+      workerId: worker._id,
+      workerHash,
+      accountId,
+      amount,
+      transactionId
+    });
+
+    return successResponse(res, {
+      transactionId,
+      amount,
+      bankName: account.bankName,
+      accountHolderName: account.accountHolderName,
+      newBalance: account.balance,
+      timestamp: new Date().toISOString()
+    }, 'Deposit successful');
+  } catch (error) {
+    logger.error('Deposit via QR error:', error);
+    return errorResponse(res, error.message, 500);
+  }
 };

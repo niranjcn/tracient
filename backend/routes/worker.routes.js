@@ -259,4 +259,46 @@ router.delete(
   workerController.deleteWorker
 );
 
+/**
+ * QR Code Routes
+ */
+
+/**
+ * @route POST /api/workers/qr/generate
+ * @desc Generate QR code for a specific bank account
+ * @access Private (Worker)
+ */
+router.post(
+  '/qr/generate',
+  authenticate,
+  body('accountId').notEmpty().withMessage('Account ID is required'),
+  validate,
+  workerController.generateQRForAccount
+);
+
+/**
+ * @route POST /api/workers/qr/verify
+ * @desc Verify a QR token and get recipient details
+ * @access Public
+ */
+router.post(
+  '/qr/verify',
+  body('token').notEmpty().withMessage('QR token is required'),
+  validate,
+  workerController.verifyQRToken
+);
+
+/**
+ * @route POST /api/workers/qr/deposit
+ * @desc Make a deposit to a worker's bank account via QR code
+ * @access Public
+ */
+router.post(
+  '/qr/deposit',
+  body('token').notEmpty().withMessage('QR token is required'),
+  body('amount').isFloat({ min: 1 }).withMessage('Amount must be greater than 0'),
+  validate,
+  workerController.depositViaQR
+);
+
 export default router;
