@@ -572,9 +572,35 @@ export const getMyBankAccounts = async (req, res) => {
       return notFoundResponse(res, 'Worker profile not found');
     }
     
+    // Format accounts for response
+    const formattedAccounts = (worker.bankAccounts || []).map(acc => ({
+      _id: acc._id,
+      accountNumber: acc.accountNumber,
+      accountNumberMasked: `****${acc.accountNumber.slice(-4)}`,
+      accountHolderName: acc.accountHolderName,
+      bankName: acc.bankName,
+      ifscCode: acc.ifscCode,
+      country: acc.country || 'IN',
+      accountType: acc.accountType,
+      balance: acc.balance || 0,
+      monthlyIncome: acc.monthlyIncome || 0,
+      balanceLastUpdated: acc.balanceLastUpdated,
+      isDefault: acc.isDefault,
+      isVerified: acc.isVerified,
+      blockchainMetadata: acc.blockchainMetadata,
+      anomalyDetection: acc.anomalyDetection,
+      createdAt: acc.createdAt
+    }));
+    
+    const totalBalance = formattedAccounts.reduce((sum, acc) => sum + (acc.balance || 0), 0);
+    const totalMonthlyIncome = formattedAccounts.reduce((sum, acc) => sum + (acc.monthlyIncome || 0), 0);
+    
     return successResponse(res, {
-      bankAccounts: worker.bankAccounts || [],
-      defaultAccount: worker.bankAccounts?.find(acc => acc.isDefault) || null
+      bankAccounts: formattedAccounts,
+      defaultAccount: formattedAccounts.find(acc => acc.isDefault) || null,
+      totalBalance,
+      totalMonthlyIncome,
+      accountCount: formattedAccounts.length
     });
   } catch (error) {
     logger.error('Get bank accounts error:', error);
@@ -587,7 +613,7 @@ export const getMyBankAccounts = async (req, res) => {
  */
 export const addBankAccount = async (req, res) => {
   try {
-    const { accountNumber, accountHolderName, bankName, ifscCode, accountType, isDefault } = req.body;
+    const { accountNumber, accountHolderName, bankName, ifscCode, country, accountType, isDefault } = req.body;
     
     const worker = await Worker.findOne({ userId: req.user.id });
     
@@ -614,13 +640,39 @@ export const addBankAccount = async (req, res) => {
       worker.bankAccounts.forEach(acc => acc.isDefault = false);
     }
     
-    // Add new account
+    // Generate mock monthly income (₹15,000 - ₹50,000 for demo)
+    const mockMonthlyIncome = Math.floor(Math.random() * (50000 - 15000) + 15000);
+    
+    // Generate mock balance (2-4 months of income)
+    const mockBalance = mockMonthlyIncome * (Math.floor(Math.random() * 3) + 2);
+    
+    // Add new account with auto-linked workerIdHash
     const newAccount = {
+      workerIdHash: worker.idHash, // ✨ Auto-linked to Aadhaar
       accountNumber,
       accountHolderName,
       bankName,
       ifscCode,
+      country: country || 'IN',
       accountType: accountType || 'savings',
+      balance: mockBalance, // Mock balance for now
+      balanceLastUpdated: new Date(),
+      monthlyIncome: mockMonthlyIncome, // Mock monthly income
+      blockchainMetadata: {
+        totalTransactionCount: 0,
+        lastSyncedAt: null
+      },
+      aiFeatures: {
+        unverified_rate: 0,
+        weekend_pct: 0,
+        night_hours_pct: 0,
+        num_unique_sources: 0,
+        income_cv: 0
+      },
+      anomalyDetection: {
+        isAnomaly: false,
+        anomalyProbability: 0
+      },
       isDefault: shouldBeDefault,
       isVerified: false,
       createdAt: new Date()
@@ -629,7 +681,11 @@ export const addBankAccount = async (req, res) => {
     worker.bankAccounts.push(newAccount);
     await worker.save();
     
-    logger.info('Bank account added', { workerId: worker._id, account: accountNumber.slice(-4) });
+    logger.info('Bank account added', { 
+      workerId: worker._id, 
+      workerIdHash: worker.idHash,
+      account: accountNumber.slice(-4) 
+    });
     
     return createdResponse(res, {
       account: worker.bankAccounts[worker.bankAccounts.length - 1]

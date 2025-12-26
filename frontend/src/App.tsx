@@ -24,6 +24,7 @@ const WageHistory = React.lazy(() => import('./pages/worker/WageHistory'));
 const BPLStatus = React.lazy(() => import('./pages/worker/BPLStatus'));
 const WorkerProfile = React.lazy(() => import('./pages/worker/Profile'));
 const WorkerQRPage = React.lazy(() => import('./pages/worker/QRPage'));
+const BankAccounts = React.lazy(() => import('./pages/worker/BankAccounts'));
 
 // Employer Pages
 const EmployerDashboard = React.lazy(() => import('./pages/employer/Dashboard'));
@@ -91,6 +92,7 @@ const App: React.FC = () => {
           <Route path="dashboard" element={<WorkerDashboard />} />
           <Route path="wages" element={<WageHistory />} />
           <Route path="bpl-status" element={<BPLStatus />} />
+          <Route path="bank-accounts" element={<BankAccounts />} />
           <Route path="profile" element={<WorkerProfile />} />
           <Route path="qr-code" element={<WorkerQRPage />} />
         </Route>

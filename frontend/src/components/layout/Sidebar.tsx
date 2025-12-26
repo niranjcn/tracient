@@ -18,7 +18,8 @@ import {
   History,
   BadgeCheck,
   Heart,
-  X
+  X,
+  CreditCard
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/utils/helpers';
@@ -42,6 +43,7 @@ const getNavItems = (role: UserRole): NavItem[] => {
       return [
         { label: 'Dashboard', icon: LayoutDashboard, path: '/worker/dashboard' },
         { label: 'Wage History', icon: History, path: '/worker/wages' },
+        { label: 'Bank Accounts', icon: CreditCard, path: '/worker/bank-accounts' },
         { label: 'BPL Status', icon: BadgeCheck, path: '/worker/bpl-status' },
         { label: 'QR Code', icon: QrCode, path: '/worker/qr-code' },
         { label: 'Welfare Benefits', icon: Heart, path: '/worker/benefits' },

@@ -87,6 +87,7 @@ router.post(
     body('accountHolderName').notEmpty().withMessage('Account holder name is required'),
     body('bankName').notEmpty().withMessage('Bank name is required'),
     body('ifscCode').matches(/^[A-Z]{4}0[A-Z0-9]{6}$/).withMessage('Invalid IFSC code format'),
+    body('country').optional().isIn(['IN', 'US', 'GB', 'AU', 'CA', 'NZ']).withMessage('Invalid country code'),
     body('accountType').optional().isIn(['savings', 'current', 'other']),
     body('isDefault').optional().isBoolean()
   ],
