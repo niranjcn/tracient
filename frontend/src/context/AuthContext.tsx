@@ -63,13 +63,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     try {
       const response = await authService.login({ identifier: email, password });
+      console.log('🔍 AuthContext received response:', response);
       
       // Handle both mock auth format and real API format
-      const accessToken = response.token || response.data?.accessToken;
+      const accessToken = response.accessToken || response.token || response.data?.accessToken;
       const refreshToken = response.refreshToken || response.data?.refreshToken;
       const userData = response.user || response.data?.user;
       
+      console.log('🔍 Extracted:', { hasToken: !!accessToken, hasUser: !!userData });
+      
       if (!accessToken || !userData) {
+        console.error('❌ Missing required fields:', { accessToken, userData });
         throw new Error('Invalid response format');
       }
       

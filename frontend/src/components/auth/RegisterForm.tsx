@@ -99,6 +99,14 @@ const WorkerRegistrationForm: React.FC<{
         />
 
         <Input
+          label="Ration Card Number (Optional)"
+          placeholder="Enter 12-digit ration card number"
+          leftIcon={<CreditCard className="h-5 w-5" />}
+          error={errors.ration_no?.message}
+          {...register('ration_no')}
+        />
+
+        <Input
           label="Password"
           type={showPassword ? 'text' : 'password'}
           placeholder="Create a password"
@@ -267,6 +275,14 @@ const EmployerRegistrationForm: React.FC<{
         />
 
         <Input
+          label="Ration Card Number (Optional)"
+          placeholder="Enter 12-digit ration card number"
+          leftIcon={<CreditCard className="h-5 w-5" />}
+          error={errors.ration_no?.message}
+          {...register('ration_no')}
+        />
+
+        <Input
           label="Password"
           type={showPassword ? 'text' : 'password'}
           placeholder="Create a password"
@@ -359,6 +375,7 @@ const RegisterForm: React.FC = () => {
         phone: data.phone,
         password: data.password,
         aadhaarNumber: data.aadhaar,
+        ration_no: data.ration_no ? parseInt(data.ration_no) : undefined,
         role: 'worker' as UserRole,
       });
       setStep('otp');
@@ -377,6 +394,7 @@ const RegisterForm: React.FC = () => {
         phone: data.phone,
         password: data.password,
         organizationName: data.businessName,
+        ration_no: data.ration_no ? parseInt(data.ration_no) : undefined,
         role: 'employer' as UserRole,
       });
       setStep('otp');

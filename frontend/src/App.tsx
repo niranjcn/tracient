@@ -24,6 +24,8 @@ const WageHistory = React.lazy(() => import('./pages/worker/WageHistory'));
 const BPLStatus = React.lazy(() => import('./pages/worker/BPLStatus'));
 const WorkerProfile = React.lazy(() => import('./pages/worker/Profile'));
 const WorkerQRPage = React.lazy(() => import('./pages/worker/QRPage'));
+const WorkerFamily = React.lazy(() => import('./pages/worker/Family'));
+const WorkerFamilySurvey = React.lazy(() => import('./pages/worker/FamilySurvey'));
 
 // Employer Pages
 const EmployerDashboard = React.lazy(() => import('./pages/employer/Dashboard'));
@@ -31,6 +33,8 @@ const RecordWage = React.lazy(() => import('./pages/employer/RecordWage'));
 const BulkUpload = React.lazy(() => import('./pages/employer/BulkUpload'));
 const EmployerWorkers = React.lazy(() => import('./pages/employer/Workers'));
 const PaymentHistory = React.lazy(() => import('./pages/employer/PaymentHistory'));
+const EmployerFamily = React.lazy(() => import('./pages/employer/Family'));
+const EmployerFamilySurvey = React.lazy(() => import('./pages/employer/FamilySurvey'));
 
 // Government Pages
 const GovDashboard = React.lazy(() => import('./pages/government/Dashboard'));
@@ -91,6 +95,8 @@ const App: React.FC = () => {
           <Route path="dashboard" element={<WorkerDashboard />} />
           <Route path="wages" element={<WageHistory />} />
           <Route path="bpl-status" element={<BPLStatus />} />
+          <Route path="family" element={<WorkerFamily />} />
+          <Route path="family/survey" element={<WorkerFamilySurvey />} />
           <Route path="profile" element={<WorkerProfile />} />
           <Route path="qr-code" element={<WorkerQRPage />} />
         </Route>
@@ -109,6 +115,8 @@ const App: React.FC = () => {
           <Route path="record-wage" element={<RecordWage />} />
           <Route path="bulk-upload" element={<BulkUpload />} />
           <Route path="workers" element={<EmployerWorkers />} />
+          <Route path="family" element={<EmployerFamily />} />
+          <Route path="family/survey" element={<EmployerFamilySurvey />} />
           <Route path="payments" element={<PaymentHistory />} />
           <Route path="profile" element={<EmployerProfile />} />
         </Route>

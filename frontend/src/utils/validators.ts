@@ -24,6 +24,14 @@ export const phoneSchema = z
   .length(10, 'Phone number must be 10 digits')
   .regex(/^[6-9]\d{9}$/, 'Invalid Indian phone number');
 
+// Ration card validation (12 digits, optional)
+export const rationSchema = z
+  .string()
+  .length(12, 'Ration card number must be 12 digits')
+  .regex(/^\d{12}$/, 'Ration card must contain only digits')
+  .optional()
+  .or(z.literal(''));
+
 // Email validation
 export const emailSchema = z.string().email('Invalid email address');
 
@@ -62,6 +70,7 @@ export const workerRegistrationSchema = z.object({
   aadhaar: aadhaarSchema,
   password: passwordSchema,
   confirmPassword: z.string(),
+  ration_no: rationSchema,
 }).refine((data) => data.password === data.confirmPassword, {
   message: 'Passwords do not match',
   path: ['confirmPassword'],
@@ -77,6 +86,7 @@ export const employerRegistrationSchema = z.object({
   gstin: gstinSchema.optional(),
   password: passwordSchema,
   confirmPassword: z.string(),
+  ration_no: rationSchema,
 }).refine((data) => data.password === data.confirmPassword, {
   message: 'Passwords do not match',
   path: ['confirmPassword'],

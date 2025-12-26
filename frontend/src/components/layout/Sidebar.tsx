@@ -18,7 +18,8 @@ import {
   History,
   BadgeCheck,
   Heart,
-  X
+  X,
+  UsersRound
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/utils/helpers';
@@ -43,6 +44,7 @@ const getNavItems = (role: UserRole): NavItem[] => {
         { label: 'Dashboard', icon: LayoutDashboard, path: '/worker/dashboard' },
         { label: 'Wage History', icon: History, path: '/worker/wages' },
         { label: 'BPL Status', icon: BadgeCheck, path: '/worker/bpl-status' },
+        { label: 'Family', icon: UsersRound, path: '/worker/family' },
         { label: 'QR Code', icon: QrCode, path: '/worker/qr-code' },
         { label: 'Welfare Benefits', icon: Heart, path: '/worker/benefits' },
         { label: 'Profile', icon: UserCog, path: '/worker/profile' },
@@ -53,6 +55,7 @@ const getNavItems = (role: UserRole): NavItem[] => {
         { label: 'Record Wage', icon: Wallet, path: '/employer/record-wage' },
         { label: 'Bulk Upload', icon: Upload, path: '/employer/bulk-upload' },
         { label: 'Workers', icon: Users, path: '/employer/workers' },
+        { label: 'Family', icon: UsersRound, path: '/employer/family' },
         { label: 'Payment History', icon: History, path: '/employer/payments' },
         { label: 'Reports', icon: FileText, path: '/employer/reports' },
       ];

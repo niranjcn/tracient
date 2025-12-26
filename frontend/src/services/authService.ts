@@ -13,14 +13,25 @@ export const authService = {
       return mockAuthService.login(credentials);
     }
     
-    const response = await post<AuthResponse>('/auth/login', credentials);
-    if (response.token) {
-      localStorage.setItem(TOKEN_KEY, response.token);
-      if (response.refreshToken) {
-        localStorage.setItem(REFRESH_TOKEN_KEY, response.refreshToken);
+    const response: any = await post<AuthResponse>('/auth/login', credentials);
+    console.log('🔍 Login response received:', response);
+    
+    // Backend returns { success, message, data: { user, accessToken, refreshToken } }
+    const data = response.data || response;
+    console.log('🔍 Extracted data:', data);
+    
+    const token = data.accessToken || data.token;
+    if (token) {
+      console.log('✅ Token found, saving to localStorage');
+      localStorage.setItem(TOKEN_KEY, token);
+      if (data.refreshToken) {
+        localStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
       }
+    } else {
+      console.error('❌ No token in response!', { hasData: !!response.data, hasAccessToken: !!data.accessToken, hasToken: !!data.token });
     }
-    return response;
+    // Return in expected format with both token and accessToken for compatibility
+    return { ...data, token: token || data.token, accessToken: data.accessToken || token };
   },
 
   // Register
@@ -30,11 +41,14 @@ export const authService = {
 
   // Verify OTP
   verifyOTP: async (data: OTPVerification): Promise<AuthResponse> => {
-    const response = await post<AuthResponse>('/auth/verify-otp', data);
-    if (response.token) {
-      localStorage.setItem(TOKEN_KEY, response.token);
+    const response: any = await post<AuthResponse>('/auth/verify-otp', data);
+    // Backend returns { success, message, data: { user, accessToken, refreshToken } }
+    const authData = response.data || response;
+    const token = authData.accessToken || authData.token;
+    if (token) {
+      localStorage.setItem(TOKEN_KEY, token);
     }
-    return response;
+    return { ...authData, token: token || authData.token, accessToken: authData.accessToken || token };
   },
 
   // Logout

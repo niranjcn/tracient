@@ -4,3 +4,5 @@ export { default as BulkUpload } from './BulkUpload';
 export { default as Workers } from './Workers';
 export { default as PaymentHistory } from './PaymentHistory';
 export { default as EmployerProfile } from './Profile';
+export { default as EmployerFamily } from './Family';
+export { default as EmployerFamilySurvey } from './FamilySurvey';
