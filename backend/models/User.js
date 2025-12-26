@@ -8,8 +8,7 @@ const userSchema = new mongoose.Schema({
     required: true,
     unique: true,
     lowercase: true,
-    trim: true,
-    index: true
+    trim: true
   },
   password: {
     type: String,
@@ -25,8 +24,7 @@ const userSchema = new mongoose.Schema({
   idHash: {
     type: String,
     unique: true,
-    sparse: true,
-    index: true
+    sparse: true
   },
   name: {
     type: String,
@@ -38,6 +36,18 @@ const userSchema = new mongoose.Schema({
     trim: true
   },
   avatar: String,
+  ration_no: {
+    type: Number,
+    min: 100000000000,
+    max: 999999999999,
+    validate: {
+      validator: function(v) {
+        if (v === null || v === undefined) return true;
+        return /^\d{12}$/.test(v.toString());
+      },
+      message: 'Ration number must be exactly 12 digits'
+    }
+  },
   isActive: {
     type: Boolean,
     default: true
@@ -66,6 +76,7 @@ const userSchema = new mongoose.Schema({
 
 // Indexes
 userSchema.index({ role: 1, isActive: 1 });
+userSchema.index({ ration_no: 1 }, { sparse: true });
 
 // Virtual for account lock status
 userSchema.virtual('isLocked').get(function() {

@@ -12,6 +12,7 @@ import employerRoutes from './employer.routes.js';
 import adminRoutes from './admin.routes.js';
 import analyticsRoutes from './analytics.routes.js';
 import blockchainRoutes from './blockchain.routes.js';
+import familyRoutes from './family.routes.js';
 
 const router = Router();
 
@@ -36,5 +37,6 @@ router.use('/employers', employerRoutes);
 router.use('/admin', adminRoutes);
 router.use('/analytics', analyticsRoutes);
 router.use('/blockchain', blockchainRoutes);
+router.use('/family', familyRoutes);
 
 export default router;
