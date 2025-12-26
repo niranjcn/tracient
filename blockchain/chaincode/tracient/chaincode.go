@@ -8,8 +8,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hyperledger/fabric-chaincode-go/v2/pkg/cid"
 	"github.com/hyperledger/fabric-contract-api-go/v2/contractapi"
 )
+
+// IAMEnabled controls whether IAM checks are enforced (set to false for testing without certificates)
+const IAMEnabled = true
+
+// Ensure cid package is used (for compiler)
+var _ = cid.GetID
 
 // SmartContract defines the Tracient wage ledger contract.
 type SmartContract struct {
@@ -115,7 +122,19 @@ type ComplianceReport struct {
 // ============================================================================
 
 // InitLedger seeds the ledger with sample wage records for smoke tests.
+// SECURITY: Only admin users from Org1MSP can initialize the ledger.
 func (s *SmartContract) InitLedger(ctx contractapi.TransactionContextInterface) error {
+	// IAM Check: Only admins can initialize ledger
+	if IAMEnabled {
+		identity, err := CheckAccess(ctx, "InitLedger")
+		if err != nil {
+			s.LogAccessDenied(ctx, "InitLedger", "ledger", "system", err.Error())
+			return fmt.Errorf("access denied: %w", err)
+		}
+		s.LogAccessGranted(ctx, "InitLedger", "ledger", "system")
+		fmt.Printf("[IAM] InitLedger called by %s (role: %s, MSP: %s)\n", identity.ID, identity.Role, identity.MSPID)
+	}
+
 	records := []WageRecord{
 		{
 			DocType:        "wage",
@@ -165,7 +184,27 @@ func (s *SmartContract) InitLedger(ctx contractapi.TransactionContextInterface) 
 // ============================================================================
 
 // RecordWage writes a new wage transaction onto the ledger.
+// SECURITY: Only employers and admins with 'canRecordWage' permission can record wages.
 func (s *SmartContract) RecordWage(ctx contractapi.TransactionContextInterface, wageID string, workerIDHash string, employerIDHash string, amount float64, currency string, jobType string, timestamp string, policyVersion string) error {
+	// IAM Check
+	if IAMEnabled {
+		identity, err := CheckAccess(ctx, "RecordWage")
+		if err != nil {
+			s.LogAccessDenied(ctx, "RecordWage", wageID, "wage", err.Error())
+			return fmt.Errorf("access denied: %w", err)
+		}
+
+		// Validate wage amount against employer's limit
+		if err := ValidateWageAmountLimit(ctx, amount); err != nil {
+			s.LogAccessDenied(ctx, "RecordWage", wageID, "wage", err.Error())
+			return fmt.Errorf("wage limit exceeded: %w", err)
+		}
+
+		// Log the access
+		s.LogAccessGranted(ctx, "RecordWage", wageID, "wage")
+		fmt.Printf("[IAM] RecordWage by %s for worker %s, amount %.2f\n", identity.ID, workerIDHash, amount)
+	}
+
 	if wageID == "" {
 		return fmt.Errorf("wageID is required")
 	}
@@ -217,7 +256,18 @@ func (s *SmartContract) RecordWage(ctx contractapi.TransactionContextInterface, 
 }
 
 // ReadWage retrieves a wage record by its ID.
+// SECURITY: All authenticated users can read wages.
 func (s *SmartContract) ReadWage(ctx contractapi.TransactionContextInterface, wageID string) (*WageRecord, error) {
+	// IAM Check
+	if IAMEnabled {
+		_, err := CheckAccess(ctx, "ReadWage")
+		if err != nil {
+			s.LogAccessDenied(ctx, "ReadWage", wageID, "wage", err.Error())
+			return nil, fmt.Errorf("access denied: %w", err)
+		}
+		s.LogDataRead(ctx, "ReadWage", wageID, "wage")
+	}
+
 	payload, err := ctx.GetStub().GetState(wageID)
 	if err != nil {
 		return nil, fmt.Errorf("get state: %w", err)
@@ -244,7 +294,18 @@ func (s *SmartContract) WageExists(ctx contractapi.TransactionContextInterface, 
 }
 
 // QueryWageHistory streams the state history for a given wage record.
+// SECURITY: Authenticated users with clearance level 2+ can query history.
 func (s *SmartContract) QueryWageHistory(ctx contractapi.TransactionContextInterface, wageID string) ([]*WageRecord, error) {
+	// IAM Check
+	if IAMEnabled {
+		_, err := CheckAccess(ctx, "QueryWageHistory")
+		if err != nil {
+			s.LogAccessDenied(ctx, "QueryWageHistory", wageID, "wage", err.Error())
+			return nil, fmt.Errorf("access denied: %w", err)
+		}
+		s.LogDataRead(ctx, "QueryWageHistory", wageID, "wage")
+	}
+
 	historyIter, err := ctx.GetStub().GetHistoryForKey(wageID)
 	if err != nil {
 		return nil, fmt.Errorf("get history: %w", err)
@@ -273,9 +334,26 @@ func (s *SmartContract) QueryWageHistory(ctx contractapi.TransactionContextInter
 }
 
 // QueryWagesByWorker retrieves all wage records for a specific worker (LevelDB compatible).
+// SECURITY: Workers can only query their own wages; privileged roles can query any worker.
 func (s *SmartContract) QueryWagesByWorker(ctx contractapi.TransactionContextInterface, workerIDHash string) ([]*WageRecord, error) {
 	if workerIDHash == "" {
 		return nil, fmt.Errorf("workerIDHash is required")
+	}
+
+	// IAM Check with self-access validation
+	if IAMEnabled {
+		identity, err := CheckAccess(ctx, "QueryWagesByWorker")
+		if err != nil {
+			s.LogAccessDenied(ctx, "QueryWagesByWorker", workerIDHash, "wage", err.Error())
+			return nil, fmt.Errorf("access denied: %w", err)
+		}
+
+		// Check self-access for workers
+		if err := CheckSelfAccess(identity, "QueryWagesByWorker", workerIDHash); err != nil {
+			s.LogAccessDenied(ctx, "QueryWagesByWorker", workerIDHash, "wage", err.Error())
+			return nil, fmt.Errorf("access denied: %w", err)
+		}
+		s.LogDataRead(ctx, "QueryWagesByWorker", workerIDHash, "wage")
 	}
 
 	// Use range query - iterate all keys that could be wages
@@ -311,9 +389,26 @@ func (s *SmartContract) QueryWagesByWorker(ctx contractapi.TransactionContextInt
 }
 
 // QueryWagesByEmployer retrieves all wage records paid by a specific employer (LevelDB compatible).
+// SECURITY: Employers can only query their own wages; privileged roles can query any employer.
 func (s *SmartContract) QueryWagesByEmployer(ctx contractapi.TransactionContextInterface, employerIDHash string) ([]*WageRecord, error) {
 	if employerIDHash == "" {
 		return nil, fmt.Errorf("employerIDHash is required")
+	}
+
+	// IAM Check with self-access validation
+	if IAMEnabled {
+		identity, err := CheckAccess(ctx, "QueryWagesByEmployer")
+		if err != nil {
+			s.LogAccessDenied(ctx, "QueryWagesByEmployer", employerIDHash, "wage", err.Error())
+			return nil, fmt.Errorf("access denied: %w", err)
+		}
+
+		// Check self-access for employers
+		if err := CheckSelfAccess(identity, "QueryWagesByEmployer", employerIDHash); err != nil {
+			s.LogAccessDenied(ctx, "QueryWagesByEmployer", employerIDHash, "wage", err.Error())
+			return nil, fmt.Errorf("access denied: %w", err)
+		}
+		s.LogDataRead(ctx, "QueryWagesByEmployer", employerIDHash, "wage")
 	}
 
 	iterator, err := ctx.GetStub().GetStateByRange("", "")
@@ -347,9 +442,26 @@ func (s *SmartContract) QueryWagesByEmployer(ctx contractapi.TransactionContextI
 }
 
 // CalculateTotalIncome calculates total income for a worker within a date range.
+// CalculateTotalIncome calculates total income for a worker within a date range.
+// SECURITY: Workers can only calculate their own income; privileged roles can calculate any.
 func (s *SmartContract) CalculateTotalIncome(ctx contractapi.TransactionContextInterface, workerIDHash string, startDate string, endDate string) (float64, error) {
 	if workerIDHash == "" {
 		return 0, fmt.Errorf("workerIDHash is required")
+	}
+
+	// IAM Check with self-access validation
+	if IAMEnabled {
+		identity, err := CheckAccess(ctx, "CalculateTotalIncome")
+		if err != nil {
+			s.LogAccessDenied(ctx, "CalculateTotalIncome", workerIDHash, "income", err.Error())
+			return 0, fmt.Errorf("access denied: %w", err)
+		}
+
+		if err := CheckSelfAccess(identity, "CalculateTotalIncome", workerIDHash); err != nil {
+			s.LogAccessDenied(ctx, "CalculateTotalIncome", workerIDHash, "income", err.Error())
+			return 0, fmt.Errorf("access denied: %w", err)
+		}
+		s.LogDataRead(ctx, "CalculateTotalIncome", workerIDHash, "income")
 	}
 
 	wages, err := s.QueryWagesByWorker(ctx, workerIDHash)
@@ -388,7 +500,19 @@ func (s *SmartContract) CalculateTotalIncome(ctx contractapi.TransactionContextI
 }
 
 // BatchRecordWages records multiple wage transactions in a single call.
+// SECURITY: Requires 'canRecordWage' and 'canBatchProcess' permissions with clearance level 6+.
 func (s *SmartContract) BatchRecordWages(ctx contractapi.TransactionContextInterface, wagesJSON string) ([]string, error) {
+	// IAM Check
+	if IAMEnabled {
+		identity, err := CheckAccess(ctx, "BatchRecordWages")
+		if err != nil {
+			s.LogAccessDenied(ctx, "BatchRecordWages", "batch", "wage", err.Error())
+			return nil, fmt.Errorf("access denied: %w", err)
+		}
+		s.LogAccessGranted(ctx, "BatchRecordWages", "batch", "wage")
+		fmt.Printf("[IAM] BatchRecordWages by %s\n", identity.ID)
+	}
+
 	var wages []struct {
 		WageID         string  `json:"wageId"`
 		WorkerIDHash   string  `json:"workerIdHash"`
@@ -418,10 +542,27 @@ func (s *SmartContract) BatchRecordWages(ctx contractapi.TransactionContextInter
 }
 
 // GetWorkerIncomeHistory retrieves monthly income breakdown for a worker.
+// SECURITY: Workers can only view their own history; privileged roles can view any.
 func (s *SmartContract) GetWorkerIncomeHistory(ctx contractapi.TransactionContextInterface, workerIDHash string, months int) ([]*MonthlyIncome, error) {
 	if workerIDHash == "" {
 		return nil, fmt.Errorf("workerIDHash is required")
 	}
+
+	// IAM Check with self-access validation
+	if IAMEnabled {
+		identity, err := CheckAccess(ctx, "GetWorkerIncomeHistory")
+		if err != nil {
+			s.LogAccessDenied(ctx, "GetWorkerIncomeHistory", workerIDHash, "income", err.Error())
+			return nil, fmt.Errorf("access denied: %w", err)
+		}
+
+		if err := CheckSelfAccess(identity, "GetWorkerIncomeHistory", workerIDHash); err != nil {
+			s.LogAccessDenied(ctx, "GetWorkerIncomeHistory", workerIDHash, "income", err.Error())
+			return nil, fmt.Errorf("access denied: %w", err)
+		}
+		s.LogDataRead(ctx, "GetWorkerIncomeHistory", workerIDHash, "income")
+	}
+
 	if months <= 0 {
 		months = 12 // Default to 12 months
 	}
@@ -475,8 +616,20 @@ func (s *SmartContract) GetWorkerIncomeHistory(ctx contractapi.TransactionContex
 // ============================================================================
 
 // RecordUPITransaction records a UPI payment transaction on the ledger.
+// SECURITY: Requires 'canRecordUPI' permission; only employers, bank officers, and admins.
 // Called during integration stage when a fake UPI payment is received.
 func (s *SmartContract) RecordUPITransaction(ctx contractapi.TransactionContextInterface, txID string, workerIDHash string, amount float64, currency string, senderName string, senderPhone string, transactionRef string, paymentMethod string) (string, error) {
+	// IAM Check
+	if IAMEnabled {
+		identity, err := CheckAccess(ctx, "RecordUPITransaction")
+		if err != nil {
+			s.LogAccessDenied(ctx, "RecordUPITransaction", txID, "upi", err.Error())
+			return "", fmt.Errorf("access denied: %w", err)
+		}
+		s.LogAccessGranted(ctx, "RecordUPITransaction", txID, "upi")
+		fmt.Printf("[IAM] RecordUPITransaction by %s for %s, amount %.2f\n", identity.ID, workerIDHash, amount)
+	}
+
 	if txID == "" {
 		return "", fmt.Errorf("txID is required")
 	}
@@ -544,7 +697,18 @@ func (s *SmartContract) UPITransactionExists(ctx contractapi.TransactionContextI
 }
 
 // ReadUPITransaction retrieves a UPI transaction record by ID.
+// SECURITY: All authenticated users can read UPI transactions.
 func (s *SmartContract) ReadUPITransaction(ctx contractapi.TransactionContextInterface, txID string) (*UPITransaction, error) {
+	// IAM Check
+	if IAMEnabled {
+		_, err := CheckAccess(ctx, "ReadUPITransaction")
+		if err != nil {
+			s.LogAccessDenied(ctx, "ReadUPITransaction", txID, "upi", err.Error())
+			return nil, fmt.Errorf("access denied: %w", err)
+		}
+		s.LogDataRead(ctx, "ReadUPITransaction", txID, "upi")
+	}
+
 	key := fmt.Sprintf("UPI_%s", txID)
 	payload, err := ctx.GetStub().GetState(key)
 	if err != nil {
@@ -563,9 +727,25 @@ func (s *SmartContract) ReadUPITransaction(ctx contractapi.TransactionContextInt
 }
 
 // QueryUPITransactionsByWorker retrieves all UPI transactions for a worker (LevelDB compatible).
+// SECURITY: Workers can only query their own UPI transactions; privileged roles can query any.
 func (s *SmartContract) QueryUPITransactionsByWorker(ctx contractapi.TransactionContextInterface, workerIDHash string) ([]*UPITransaction, error) {
 	if workerIDHash == "" {
 		return nil, fmt.Errorf("workerIDHash is required")
+	}
+
+	// IAM Check with self-access validation
+	if IAMEnabled {
+		identity, err := CheckAccess(ctx, "QueryUPITransactionsByWorker")
+		if err != nil {
+			s.LogAccessDenied(ctx, "QueryUPITransactionsByWorker", workerIDHash, "upi", err.Error())
+			return nil, fmt.Errorf("access denied: %w", err)
+		}
+
+		if err := CheckSelfAccess(identity, "QueryUPITransactionsByWorker", workerIDHash); err != nil {
+			s.LogAccessDenied(ctx, "QueryUPITransactionsByWorker", workerIDHash, "upi", err.Error())
+			return nil, fmt.Errorf("access denied: %w", err)
+		}
+		s.LogDataRead(ctx, "QueryUPITransactionsByWorker", workerIDHash, "upi")
 	}
 
 	iterator, err := ctx.GetStub().GetStateByRange("UPI_", "UPI_~")
@@ -599,7 +779,19 @@ func (s *SmartContract) QueryUPITransactionsByWorker(ctx contractapi.Transaction
 // ============================================================================
 
 // RegisterUser registers a new user with role-based access control.
+// SECURITY: Only government officials and admins with 'canRegisterUsers' permission from Org1MSP.
 func (s *SmartContract) RegisterUser(ctx contractapi.TransactionContextInterface, userID string, userIDHash string, role string, orgID string, name string, contactHash string) error {
+	// IAM Check
+	if IAMEnabled {
+		identity, err := CheckAccess(ctx, "RegisterUser")
+		if err != nil {
+			s.LogAccessDenied(ctx, "RegisterUser", userIDHash, "user", err.Error())
+			return fmt.Errorf("access denied: %w", err)
+		}
+		s.LogAccessGranted(ctx, "RegisterUser", userIDHash, "user")
+		fmt.Printf("[IAM] RegisterUser by %s: registering %s with role %s\n", identity.ID, userIDHash, role)
+	}
+
 	if userID == "" || userIDHash == "" {
 		return fmt.Errorf("userID and userIDHash are required")
 	}
@@ -663,9 +855,25 @@ func (s *SmartContract) RegisterUser(ctx contractapi.TransactionContextInterface
 }
 
 // GetUserProfile retrieves a user profile by hashed ID.
+// SECURITY: Users can only view their own profile; privileged roles can view any.
 func (s *SmartContract) GetUserProfile(ctx contractapi.TransactionContextInterface, userIDHash string) (*User, error) {
 	if userIDHash == "" {
 		return nil, fmt.Errorf("userIDHash is required")
+	}
+
+	// IAM Check with self-access validation
+	if IAMEnabled {
+		identity, err := CheckAccess(ctx, "GetUserProfile")
+		if err != nil {
+			s.LogAccessDenied(ctx, "GetUserProfile", userIDHash, "user", err.Error())
+			return nil, fmt.Errorf("access denied: %w", err)
+		}
+
+		if err := CheckSelfAccess(identity, "GetUserProfile", userIDHash); err != nil {
+			s.LogAccessDenied(ctx, "GetUserProfile", userIDHash, "user", err.Error())
+			return nil, fmt.Errorf("access denied: %w", err)
+		}
+		s.LogDataRead(ctx, "GetUserProfile", userIDHash, "user")
 	}
 
 	key := fmt.Sprintf("USER_%s", userIDHash)
@@ -686,9 +894,22 @@ func (s *SmartContract) GetUserProfile(ctx contractapi.TransactionContextInterfa
 }
 
 // UpdateUserStatus updates a user's status (requires government_official or admin role).
+// SECURITY: Only government officials and admins with 'canManageUsers' permission from Org1MSP.
 func (s *SmartContract) UpdateUserStatus(ctx contractapi.TransactionContextInterface, userIDHash string, status string, updatedBy string) error {
 	if userIDHash == "" {
 		return fmt.Errorf("userIDHash is required")
+	}
+
+	// IAM Check
+	if IAMEnabled {
+		identity, err := CheckAccess(ctx, "UpdateUserStatus")
+		if err != nil {
+			s.LogAccessDenied(ctx, "UpdateUserStatus", userIDHash, "user", err.Error())
+			return fmt.Errorf("access denied: %w", err)
+		}
+		// Log as high-risk action
+		s.LogAccess(ctx, EventUserUpdated, "UpdateUserStatus", userIDHash, "user", "success", fmt.Sprintf("status changed to %s", status))
+		fmt.Printf("[IAM] UpdateUserStatus by %s: %s -> %s\n", identity.ID, userIDHash, status)
 	}
 
 	// Validate status
@@ -701,15 +922,7 @@ func (s *SmartContract) UpdateUserStatus(ctx contractapi.TransactionContextInter
 		return fmt.Errorf("invalid status: %s. Valid: active, inactive, suspended", status)
 	}
 
-	// Verify updater has permission (government_official or admin)
-	if updatedBy != "" {
-		updater, err := s.GetUserProfile(ctx, updatedBy)
-		if err == nil && updater.Role != "government_official" && updater.Role != "admin" {
-			return fmt.Errorf("access denied: only government officials or admins can update user status")
-		}
-	}
-
-	// Get existing user
+	// Get existing user (skip internal permission check since we already verified)
 	user, err := s.GetUserProfile(ctx, userIDHash)
 	if err != nil {
 		return err
@@ -728,9 +941,19 @@ func (s *SmartContract) UpdateUserStatus(ctx contractapi.TransactionContextInter
 }
 
 // VerifyUserRole checks if a user has the required role.
+// SECURITY: All authenticated users can verify roles.
 func (s *SmartContract) VerifyUserRole(ctx contractapi.TransactionContextInterface, userIDHash string, requiredRole string) (bool, error) {
 	if userIDHash == "" {
 		return false, fmt.Errorf("userIDHash is required")
+	}
+
+	// IAM Check
+	if IAMEnabled {
+		_, err := CheckAccess(ctx, "VerifyUserRole")
+		if err != nil {
+			s.LogAccessDenied(ctx, "VerifyUserRole", userIDHash, "user", err.Error())
+			return false, fmt.Errorf("access denied: %w", err)
+		}
 	}
 
 	user, err := s.GetUserProfile(ctx, userIDHash)
@@ -760,6 +983,7 @@ func (s *SmartContract) UserExists(ctx contractapi.TransactionContextInterface, 
 // ============================================================================
 
 // SetPovertyThreshold sets BPL/APL threshold for a state (requires government_official role).
+// SECURITY: Only government officials and admins with 'canUpdateThresholds' permission from Org1MSP.
 func (s *SmartContract) SetPovertyThreshold(ctx contractapi.TransactionContextInterface, state string, category string, amountStr string, setBy string) error {
 	if state == "" {
 		return fmt.Errorf("state is required")
@@ -768,20 +992,23 @@ func (s *SmartContract) SetPovertyThreshold(ctx contractapi.TransactionContextIn
 		return fmt.Errorf("category must be 'BPL' or 'APL'")
 	}
 
+	// IAM Check
+	if IAMEnabled {
+		identity, err := CheckAccess(ctx, "SetPovertyThreshold")
+		if err != nil {
+			s.LogAccessDenied(ctx, "SetPovertyThreshold", fmt.Sprintf("%s_%s", state, category), "threshold", err.Error())
+			return fmt.Errorf("access denied: %w", err)
+		}
+		s.LogAccess(ctx, EventThresholdChanged, "SetPovertyThreshold", fmt.Sprintf("%s_%s", state, category), "threshold", "success", fmt.Sprintf("amount: %s", amountStr))
+		fmt.Printf("[IAM] SetPovertyThreshold by %s: %s %s = %s\n", identity.ID, state, category, amountStr)
+	}
+
 	amount, err := strconv.ParseFloat(amountStr, 64)
 	if err != nil {
 		return fmt.Errorf("invalid amount: %w", err)
 	}
 	if amount <= 0 {
 		return fmt.Errorf("amount must be positive")
-	}
-
-	// Verify setter has permission (government_official) if setBy is provided
-	if setBy != "" {
-		setter, err := s.GetUserProfile(ctx, setBy)
-		if err == nil && setter.Role != "government_official" && setter.Role != "admin" {
-			return fmt.Errorf("access denied: only government officials can set poverty thresholds")
-		}
 	}
 
 	threshold := PovertyThreshold{
@@ -812,7 +1039,18 @@ func (s *SmartContract) SetPovertyThreshold(ctx contractapi.TransactionContextIn
 }
 
 // GetPovertyThreshold retrieves the poverty threshold for a state and category.
+// SECURITY: All authenticated users can read thresholds.
 func (s *SmartContract) GetPovertyThreshold(ctx contractapi.TransactionContextInterface, state string, category string) (*PovertyThreshold, error) {
+	// IAM Check
+	if IAMEnabled {
+		_, err := CheckAccess(ctx, "GetPovertyThreshold")
+		if err != nil {
+			s.LogAccessDenied(ctx, "GetPovertyThreshold", fmt.Sprintf("%s_%s", state, category), "threshold", err.Error())
+			return nil, fmt.Errorf("access denied: %w", err)
+		}
+		s.LogDataRead(ctx, "GetPovertyThreshold", fmt.Sprintf("%s_%s", state, category), "threshold")
+	}
+
 	if state == "" {
 		state = "DEFAULT"
 	}
@@ -848,9 +1086,25 @@ func (s *SmartContract) GetPovertyThreshold(ctx contractapi.TransactionContextIn
 }
 
 // CheckPovertyStatus determines if a worker is BPL or APL based on income.
+// SECURITY: Workers can only check their own status; privileged roles can check any.
 func (s *SmartContract) CheckPovertyStatus(ctx contractapi.TransactionContextInterface, workerIDHash string, state string, startDate string, endDate string) (*PovertyStatusResult, error) {
 	if workerIDHash == "" {
 		return nil, fmt.Errorf("workerIDHash is required")
+	}
+
+	// IAM Check with self-access validation
+	if IAMEnabled {
+		identity, err := CheckAccess(ctx, "CheckPovertyStatus")
+		if err != nil {
+			s.LogAccessDenied(ctx, "CheckPovertyStatus", workerIDHash, "poverty_status", err.Error())
+			return nil, fmt.Errorf("access denied: %w", err)
+		}
+
+		if err := CheckSelfAccess(identity, "CheckPovertyStatus", workerIDHash); err != nil {
+			s.LogAccessDenied(ctx, "CheckPovertyStatus", workerIDHash, "poverty_status", err.Error())
+			return nil, fmt.Errorf("access denied: %w", err)
+		}
+		s.LogDataRead(ctx, "CheckPovertyStatus", workerIDHash, "poverty_status")
 	}
 
 	// Calculate total income
@@ -902,9 +1156,21 @@ func (s *SmartContract) CheckPovertyStatus(ctx contractapi.TransactionContextInt
 // ============================================================================
 
 // FlagAnomaly flags a wage record as suspicious (from AI model).
+// SECURITY: Only auditors, government officials, and admins with 'canFlagAnomaly' permission.
 func (s *SmartContract) FlagAnomaly(ctx contractapi.TransactionContextInterface, wageID string, anomalyScoreStr string, reason string, flaggedBy string) error {
 	if wageID == "" {
 		return fmt.Errorf("wageID is required")
+	}
+
+	// IAM Check
+	if IAMEnabled {
+		identity, err := CheckAccess(ctx, "FlagAnomaly")
+		if err != nil {
+			s.LogAccessDenied(ctx, "FlagAnomaly", wageID, "anomaly", err.Error())
+			return fmt.Errorf("access denied: %w", err)
+		}
+		s.LogAccess(ctx, EventAnomalyFlagged, "FlagAnomaly", wageID, "anomaly", "success", fmt.Sprintf("score: %s, reason: %s", anomalyScoreStr, reason))
+		fmt.Printf("[IAM] FlagAnomaly by %s: %s (score: %s)\n", identity.ID, wageID, anomalyScoreStr)
 	}
 
 	anomalyScore, err := strconv.ParseFloat(anomalyScoreStr, 64)
@@ -950,7 +1216,18 @@ func (s *SmartContract) FlagAnomaly(ctx contractapi.TransactionContextInterface,
 }
 
 // GetFlaggedWages retrieves all wages flagged above a threshold score.
+// SECURITY: Only auditors, government officials, and admins.
 func (s *SmartContract) GetFlaggedWages(ctx contractapi.TransactionContextInterface, thresholdStr string) ([]*Anomaly, error) {
+	// IAM Check
+	if IAMEnabled {
+		_, err := CheckAccess(ctx, "GetFlaggedWages")
+		if err != nil {
+			s.LogAccessDenied(ctx, "GetFlaggedWages", "all", "anomaly", err.Error())
+			return nil, fmt.Errorf("access denied: %w", err)
+		}
+		s.LogDataRead(ctx, "GetFlaggedWages", fmt.Sprintf("threshold:%s", thresholdStr), "anomaly")
+	}
+
 	threshold, err := strconv.ParseFloat(thresholdStr, 64)
 	if err != nil {
 		threshold = 0.5 // Default threshold
@@ -983,9 +1260,21 @@ func (s *SmartContract) GetFlaggedWages(ctx contractapi.TransactionContextInterf
 }
 
 // UpdateAnomalyStatus updates the status of a flagged anomaly.
+// SECURITY: Only auditors, government officials, and admins with 'canReviewAnomaly' permission.
 func (s *SmartContract) UpdateAnomalyStatus(ctx contractapi.TransactionContextInterface, wageID string, status string, reviewedBy string) error {
 	if wageID == "" {
 		return fmt.Errorf("wageID is required")
+	}
+
+	// IAM Check
+	if IAMEnabled {
+		identity, err := CheckAccess(ctx, "UpdateAnomalyStatus")
+		if err != nil {
+			s.LogAccessDenied(ctx, "UpdateAnomalyStatus", wageID, "anomaly", err.Error())
+			return fmt.Errorf("access denied: %w", err)
+		}
+		s.LogAccess(ctx, EventAnomalyReviewed, "UpdateAnomalyStatus", wageID, "anomaly", "success", fmt.Sprintf("status: %s", status))
+		fmt.Printf("[IAM] UpdateAnomalyStatus by %s: %s -> %s\n", identity.ID, wageID, status)
 	}
 
 	validStatuses := map[string]bool{
@@ -1028,7 +1317,19 @@ func (s *SmartContract) UpdateAnomalyStatus(ctx contractapi.TransactionContextIn
 // ============================================================================
 
 // GenerateComplianceReport generates a compliance report for a date range.
+// SECURITY: Only government officials, auditors, and admins with 'canGenerateReport' permission.
 func (s *SmartContract) GenerateComplianceReport(ctx contractapi.TransactionContextInterface, startDate string, endDate string, reportType string) (*ComplianceReport, error) {
+	// IAM Check
+	if IAMEnabled {
+		identity, err := CheckAccess(ctx, "GenerateComplianceReport")
+		if err != nil {
+			s.LogAccessDenied(ctx, "GenerateComplianceReport", reportType, "report", err.Error())
+			return nil, fmt.Errorf("access denied: %w", err)
+		}
+		s.LogAccess(ctx, EventReportGenerated, "GenerateComplianceReport", reportType, "report", "success", fmt.Sprintf("period: %s to %s", startDate, endDate))
+		fmt.Printf("[IAM] GenerateComplianceReport by %s: type=%s, period=%s to %s\n", identity.ID, reportType, startDate, endDate)
+	}
+
 	if reportType == "" {
 		reportType = "wage_summary"
 	}
