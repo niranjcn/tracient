@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"fmt"
 	"strconv"
 	"strings"
@@ -259,12 +260,45 @@ func GetClientIdentity(ctx contractapi.TransactionContextInterface) (*ClientIden
 		identity.Attributes["role"] = role
 	}
 
-	// Get clearance level
-	clearanceStr, found, err := cid.GetAttributeValue(ctx.GetStub(), "clearanceLevel")
-	if err == nil && found {
-		clearance, _ := strconv.Atoi(clearanceStr)
-		identity.ClearanceLevel = clearance
-		identity.Attributes["clearanceLevel"] = clearanceStr
+	// AUTO-DETECT ADMIN FROM CERTIFICATE OU (Organizational Unit)
+	// This allows default Fabric admin certificates to work without explicit role attributes
+	if identity.Role == "" {
+		// The clientID from cid.GetID() is base64 encoded, so we need to decode it
+		// to check for admin OU. The format is: x509::CN=...,OU=admin,...::...
+		decodedID := clientID
+		if decoded, err := base64.StdEncoding.DecodeString(clientID); err == nil {
+			decodedID = string(decoded)
+		}
+		
+		// Check if user is in admin OU by examining the decoded client ID
+		// Default Fabric admin certs have OU=admin in the certificate
+		if strings.Contains(decodedID, "OU=admin") || strings.Contains(strings.ToLower(decodedID), ",ou=admin,") {
+			identity.Role = "admin"
+			identity.Attributes["role"] = "admin"
+			identity.ClearanceLevel = 10 // Admin gets highest clearance
+			identity.Attributes["clearanceLevel"] = "10"
+			// Grant all permissions to admin
+			allPermissions := []string{
+				"canRecordWage", "canRecordUPI", "canBatchProcess",
+				"canRegisterUsers", "canManageUsers",
+				"canUpdateThresholds", "canFlagAnomaly", "canReviewAnomaly",
+				"canGenerateReport", "canReadAll", "canExport",
+			}
+			for _, perm := range allPermissions {
+				identity.Permissions[perm] = true
+				identity.Attributes[perm] = "true"
+			}
+		}
+	}
+
+	// Get clearance level (if not already set by admin detection)
+	if identity.ClearanceLevel == 0 {
+		clearanceStr, found, err := cid.GetAttributeValue(ctx.GetStub(), "clearanceLevel")
+		if err == nil && found {
+			clearance, _ := strconv.Atoi(clearanceStr)
+			identity.ClearanceLevel = clearance
+			identity.Attributes["clearanceLevel"] = clearanceStr
+		}
 	}
 
 	// Get department
