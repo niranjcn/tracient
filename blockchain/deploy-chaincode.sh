@@ -106,9 +106,14 @@ if echo "$COMMITTED" | grep -q "Version:"; then
     
     print_info "Current chaincode: v${CURRENT_VERSION}, sequence ${CURRENT_SEQ}"
     
-    # Auto-increment sequence (handle decimal version numbers)
-    CURRENT_SEQ_INT=$(echo "$CURRENT_SEQ" | cut -d'.' -f1)
+    # Auto-increment sequence - extract just the integer part
+    CURRENT_SEQ_INT=$(echo "$CURRENT_SEQ" | grep -oE '^[0-9]+' || echo "$CURRENT_SEQ")
     CHAINCODE_SEQUENCE=$((CURRENT_SEQ_INT + 1))
+    
+    # Auto-increment version
+    CURRENT_VERSION_NUM=$(echo "$CURRENT_VERSION" | grep -oE '^[0-9]+\.?[0-9]*' || echo "2.0")
+    CHAINCODE_VERSION=$(echo "$CURRENT_VERSION_NUM + 0.1" | bc)
+    
     print_info "Will deploy: v${CHAINCODE_VERSION}, sequence ${CHAINCODE_SEQUENCE}"
 else
     print_info "No existing chaincode found. Fresh deployment."
