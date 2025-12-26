@@ -63,10 +63,8 @@ export const useWorkerBankAccounts = () => {
       setLoading(true);
       setError(null);
       
-      // API response is already unwrapped by axios interceptor
-      const response = await api.get('/workers/profile/bank-accounts') as BankAccountsResponse;
+      const response = await api.get('/workers/profile/bank-accounts') as any;
       
-      // Handle the response data properly
       if (response && response.data) {
         setAccounts(response.data.bankAccounts || []);
         setDefaultAccount(response.data.defaultAccount || null);

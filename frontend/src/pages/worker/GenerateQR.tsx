@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowRight, CreditCard, Copy, Check, AlertCircle } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
 import { useWorkerBankAccounts } from '@/hooks/useWorkerBankAccounts';
 import { Button, Card, Alert } from '@/components/common';
 import { toast } from 'react-hot-toast';
@@ -17,7 +16,6 @@ interface QRGenerationResponse {
 }
 
 export default function GenerateQRPage() {
-  const { user } = useAuth();
   const { accounts, loading: accountsLoading } = useWorkerBankAccounts();
   
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
@@ -45,7 +43,6 @@ export default function GenerateQRPage() {
         accountId: selectedAccountId
       });
 
-      // Response is already unwrapped by axios interceptor
       setQrData(response.data);
       setQrToken(response.data.token);
       toast.success('QR code generated successfully!');

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { Smartphone, QrCode, AlertCircle, CheckCircle, ArrowRight } from 'lucide-react';
 import { Button, Card, Alert, Input } from '@/components/common';
 import { toast } from 'react-hot-toast';

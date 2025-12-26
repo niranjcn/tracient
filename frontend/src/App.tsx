@@ -24,14 +24,11 @@ const WageHistory = React.lazy(() => import('./pages/worker/WageHistory'));
 const BPLStatus = React.lazy(() => import('./pages/worker/BPLStatus'));
 const WorkerProfile = React.lazy(() => import('./pages/worker/Profile'));
 const WorkerQRPage = React.lazy(() => import('./pages/worker/QRPage'));
-<<<<<<< HEAD
 const WorkerFamily = React.lazy(() => import('./pages/worker/Family'));
 const WorkerFamilySurvey = React.lazy(() => import('./pages/worker/FamilySurvey'));
-=======
 const BankAccounts = React.lazy(() => import('./pages/worker/BankAccounts'));
 const GenerateQR = React.lazy(() => import('./pages/worker/GenerateQR'));
 const ScanQR = React.lazy(() => import('./pages/worker/ScanQR'));
->>>>>>> cbdb3400abbcabcd54ac9c9696e299c95e341635
 
 // Employer Pages
 const EmployerDashboard = React.lazy(() => import('./pages/employer/Dashboard'));
@@ -101,13 +98,10 @@ const App: React.FC = () => {
           <Route path="dashboard" element={<WorkerDashboard />} />
           <Route path="wages" element={<WageHistory />} />
           <Route path="bpl-status" element={<BPLStatus />} />
-<<<<<<< HEAD
           <Route path="family" element={<WorkerFamily />} />
           <Route path="family/survey" element={<WorkerFamilySurvey />} />
-=======
           <Route path="bank-accounts" element={<BankAccounts />} />
           <Route path="generate-qr" element={<GenerateQR />} />
->>>>>>> cbdb3400abbcabcd54ac9c9696e299c95e341635
           <Route path="profile" element={<WorkerProfile />} />
           <Route path="qr-code" element={<WorkerQRPage />} />
         </Route>
