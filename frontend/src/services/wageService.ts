@@ -1,4 +1,4 @@
-import { get, post, uploadFile } from './api';
+import { get, post, put, uploadFile } from './api';
 import { 
   WageRecord, 
   IncomeStats, 
@@ -92,6 +92,21 @@ export const wageService = {
   // Download wage report
   downloadReport: async (idHash: string, type: 'worker' | 'employer', format: 'pdf' | 'excel', params?: WageQueryParams): Promise<Blob> => {
     return get(`/wages/report/${type}/${idHash}`, { ...params, format });
+  },
+
+  // Get worker profile (personal and address info)
+  getWorkerProfile: async (): Promise<any> => {
+    return get('/workers/profile');
+  },
+
+  // Update worker profile (personal and address info)
+  updateWorkerProfile: async (data: any): Promise<any> => {
+    return put('/workers/profile', data);
+  },
+
+  // Generate QR code for bank account
+  generateQRCode: async (accountId: string): Promise<any> => {
+    return post('/workers/qr/generate', { accountId });
   },
 };
 

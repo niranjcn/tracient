@@ -418,13 +418,62 @@ export const deleteWorker = async (req, res) => {
 export const getMyProfile = async (req, res) => {
   try {
     const worker = await Worker.findOne({ userId: req.user.id })
-      .populate('userId', 'email role isActive lastLogin');
+      .populate('userId', 'email role isActive lastLogin createdAt')
+      .populate('currentEmployerId', 'name businessType registrationNumber')
+      .populate('enrolledSchemes.schemeId', 'name description benefits')
+      .lean();
     
     if (!worker) {
       return notFoundResponse(res, 'Worker profile not found');
     }
     
-    return successResponse(res, { worker });
+    // Format response with all personal and address info
+    const profileData = {
+      _id: worker._id,
+      personalInfo: {
+        firstName: worker.name ? worker.name.split(' ')[0] : '',
+        lastName: worker.name ? worker.name.split(' ').slice(1).join(' ') : '',
+        dateOfBirth: worker.dateOfBirth,
+        gender: worker.gender,
+        phone: worker.phone,
+        alternatePhone: worker.alternatePhone,
+        email: worker.userId?.email || '',
+        aadhaarHash: worker.idHash,
+        aadhaarLast4: worker.aadhaarLast4,
+        occupation: worker.occupation,
+        skills: worker.skills || []
+      },
+      addressInfo: {
+        street: worker.address?.street || '',
+        city: worker.address?.city || '',
+        state: worker.address?.state || '',
+        postalCode: worker.address?.pincode || '',
+        district: worker.address?.district || '',
+        country: 'India'
+      },
+      bankAccounts: worker.bankAccounts || [],
+      financialInfo: {
+        totalEarnings: worker.totalEarnings,
+        balance: worker.balance,
+        annualIncome: worker.annualIncome,
+        incomeCategory: worker.incomeCategory,
+        lastClassificationDate: worker.lastClassificationDate
+      },
+      verificationInfo: {
+        verificationStatus: worker.verificationStatus,
+        verifiedAt: worker.verifiedAt,
+        verificationNotes: worker.verificationNotes
+      },
+      enrolledSchemes: worker.enrolledSchemes || [],
+      timestamps: {
+        registeredAt: worker.registeredAt,
+        createdAt: worker.createdAt,
+        updatedAt: worker.updatedAt,
+        lastActiveAt: worker.lastActiveAt
+      }
+    };
+    
+    return successResponse(res, profileData);
   } catch (error) {
     logger.error('Get my profile error:', error);
     return errorResponse(res, error.message, 500);
@@ -436,7 +485,7 @@ export const getMyProfile = async (req, res) => {
  */
 export const updateMyProfile = async (req, res) => {
   try {
-    const { name, phone, bankAccount, ifscCode, bankName, upiId, address } = req.body;
+    const { personalInfo, addressInfo, bankDetails } = req.body;
     
     const worker = await Worker.findOne({ userId: req.user.id });
     
@@ -444,25 +493,80 @@ export const updateMyProfile = async (req, res) => {
       return notFoundResponse(res, 'Worker profile not found');
     }
     
-    // Update allowed fields
-    if (name) worker.name = name;
-    if (phone) worker.phone = phone;
-    if (bankAccount) worker.bankAccount = bankAccount;
-    if (ifscCode) worker.ifscCode = ifscCode;
-    if (bankName) worker.bankName = bankName;
-    if (upiId) worker.upiId = upiId;
-    if (address) worker.address = address;
+    // Update personal information
+    if (personalInfo) {
+      if (personalInfo.firstName || personalInfo.lastName) {
+        const firstName = personalInfo.firstName || '';
+        const lastName = personalInfo.lastName || '';
+        worker.name = `${firstName} ${lastName}`.trim();
+      }
+      if (personalInfo.dateOfBirth) worker.dateOfBirth = personalInfo.dateOfBirth;
+      if (personalInfo.gender) worker.gender = personalInfo.gender;
+      if (personalInfo.phone) worker.phone = personalInfo.phone;
+      if (personalInfo.alternatePhone) worker.alternatePhone = personalInfo.alternatePhone;
+      if (personalInfo.occupation) worker.occupation = personalInfo.occupation;
+      if (Array.isArray(personalInfo.skills)) worker.skills = personalInfo.skills;
+    }
+    
+    // Update address information
+    if (addressInfo) {
+      if (!worker.address) {
+        worker.address = {};
+      }
+      if (addressInfo.street) worker.address.street = addressInfo.street;
+      if (addressInfo.city) worker.address.city = addressInfo.city;
+      if (addressInfo.state) worker.address.state = addressInfo.state;
+      if (addressInfo.postalCode) worker.address.pincode = addressInfo.postalCode;
+      if (addressInfo.district) worker.address.district = addressInfo.district;
+    }
+    
+    // Update bank details if provided (for primary account compatibility)
+    if (bankDetails) {
+      if (bankDetails.accountNumber) worker.bankAccount = bankDetails.accountNumber;
+      if (bankDetails.bankName) worker.bankName = bankDetails.bankName;
+      if (bankDetails.ifscCode) worker.ifscCode = bankDetails.ifscCode;
+      if (bankDetails.upiId) worker.upiId = bankDetails.upiId;
+    }
     
     await worker.save();
     
     // Also update user name if provided
-    if (name) {
-      await User.findByIdAndUpdate(worker.userId, { name });
+    if (personalInfo?.firstName || personalInfo?.lastName) {
+      await User.findByIdAndUpdate(worker.userId, { name: worker.name });
     }
     
     logger.info('Worker profile updated', { workerId: worker._id });
     
-    return successResponse(res, { worker }, 'Profile updated successfully');
+    // Return updated profile in formatted structure
+    const updatedWorker = await Worker.findOne({ userId: req.user.id })
+      .populate('userId', 'email role isActive lastLogin')
+      .lean();
+    
+    const profileData = {
+      _id: updatedWorker._id,
+      personalInfo: {
+        firstName: updatedWorker.name ? updatedWorker.name.split(' ')[0] : '',
+        lastName: updatedWorker.name ? updatedWorker.name.split(' ').slice(1).join(' ') : '',
+        dateOfBirth: updatedWorker.dateOfBirth,
+        gender: updatedWorker.gender,
+        phone: updatedWorker.phone,
+        alternatePhone: updatedWorker.alternatePhone,
+        email: updatedWorker.userId?.email || '',
+        occupation: updatedWorker.occupation,
+        skills: updatedWorker.skills || []
+      },
+      addressInfo: {
+        street: updatedWorker.address?.street || '',
+        city: updatedWorker.address?.city || '',
+        state: updatedWorker.address?.state || '',
+        postalCode: updatedWorker.address?.pincode || '',
+        district: updatedWorker.address?.district || '',
+        country: 'India'
+      },
+      bankAccounts: updatedWorker.bankAccounts || []
+    };
+    
+    return successResponse(res, profileData, 'Profile updated successfully');
   } catch (error) {
     logger.error('Update my profile error:', error);
     return errorResponse(res, error.message, 500);
@@ -798,6 +902,70 @@ export const setDefaultBankAccount = async (req, res) => {
   }
 };
 
+/**
+ * Generate QR code for bank account
+ */
+export const generateQRForAccount = async (req, res) => {
+  try {
+    const { accountId } = req.body;
+    const worker = await Worker.findOne({ userId: req.user.id });
+
+    if (!worker) {
+      return notFoundResponse(res, 'Worker not found');
+    }
+
+    const account = worker.bankAccounts?.id(accountId);
+    if (!account) {
+      return notFoundResponse(res, 'Bank account not found');
+    }
+
+    // Create QR data object with bank account details
+    const qrData = {
+      type: 'payment',
+      workerIdHash: worker.idHash,
+      accountId: accountId,
+      accountNumber: account.accountNumber,
+      accountHolder: account.accountHolderName,
+      bankName: account.bankName,
+      ifscCode: account.ifscCode,
+      timestamp: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
+    };
+
+    // Create the QR code string (JSON format, base64 encoded)
+    const qrContent = JSON.stringify(qrData);
+    const qrToken = Buffer.from(qrContent).toString('base64');
+
+    // Generate QR code image using external API
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrToken)}`;
+
+    // Create verification URL for internal use
+    const verifyUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/scan-qr?token=${qrToken}`;
+
+    logger.info('QR code generated', {
+      workerId: worker._id,
+      accountId: accountId,
+      accountNumber: account.accountNumber.slice(-4)
+    });
+
+    return successResponse(res, {
+      token: qrToken,
+      qrCodeUrl,
+      verifyUrl,
+      accountDetails: {
+        accountNumber: `****${account.accountNumber.slice(-4)}`,
+        accountHolder: account.accountHolderName,
+        bankName: account.bankName,
+        ifscCode: account.ifscCode
+      },
+      expiresAt: qrData.expiresAt
+    }, 'QR code generated successfully');
+  } catch (error) {
+    logger.error('Generate QR error:', error);
+    return errorResponse(res, error.message, 500);
+  }
+};
+
 export default {
   createWorker,
   getWorkers,
@@ -817,7 +985,8 @@ export default {
   addBankAccount,
   updateBankAccount,
   deleteBankAccount,
-  setDefaultBankAccount
+  setDefaultBankAccount,
+  generateQRForAccount
 };
 
 

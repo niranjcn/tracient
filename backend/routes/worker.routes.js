@@ -247,6 +247,19 @@ router.get(
 );
 
 /**
+ * @route POST /api/workers/qr/generate
+ * @desc Generate QR code for bank account
+ * @access Private (Worker)
+ */
+router.post(
+  '/qr/generate',
+  authenticate,
+  body('accountId').notEmpty().withMessage('Account ID is required'),
+  validate,
+  workerController.generateQRForAccount
+);
+
+/**
  * @route DELETE /api/workers/:id
  * @desc Delete (deactivate) worker
  * @access Private (Admin)
