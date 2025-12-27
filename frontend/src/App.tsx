@@ -21,7 +21,7 @@ const Unauthorized = React.lazy(() => import('./pages/Unauthorized'));
 // Worker Pages
 const WorkerDashboard = React.lazy(() => import('./pages/worker/Dashboard'));
 const WageHistory = React.lazy(() => import('./pages/worker/WageHistory'));
-const BPLStatus = React.lazy(() => import('./pages/worker/BPLStatus'));
+const Welfare = React.lazy(() => import('./pages/worker/Welfare'));
 const WorkerProfile = React.lazy(() => import('./pages/worker/Profile'));
 const WorkerFamily = React.lazy(() => import('./pages/worker/Family'));
 const WorkerFamilySurvey = React.lazy(() => import('./pages/worker/FamilySurvey'));
@@ -96,7 +96,7 @@ const App: React.FC = () => {
           <Route index element={<Navigate to={ROUTES.WORKER_DASHBOARD} replace />} />
           <Route path="dashboard" element={<WorkerDashboard />} />
           <Route path="wages" element={<WageHistory />} />
-          <Route path="bpl-status" element={<BPLStatus />} />
+          <Route path="welfare" element={<Welfare />} />
           <Route path="family" element={<WorkerFamily />} />
           <Route path="family/survey" element={<WorkerFamilySurvey />} />
           <Route path="bank-accounts" element={<BankAccounts />} />

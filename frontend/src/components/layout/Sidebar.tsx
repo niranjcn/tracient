@@ -45,11 +45,10 @@ const getNavItems = (role: UserRole): NavItem[] => {
         { label: 'Dashboard', icon: LayoutDashboard, path: '/worker/dashboard' },
         { label: 'Wage History', icon: History, path: '/worker/wages' },
         { label: 'Bank Accounts', icon: CreditCard, path: '/worker/bank-accounts' },
-        { label: 'BPL Status', icon: BadgeCheck, path: '/worker/bpl-status' },
+        { label: 'Welfare Eligibility', icon: BadgeCheck, path: '/worker/welfare' },
         { label: 'Family', icon: UsersRound, path: '/worker/family' },
         { label: 'Payments', icon: QrCode, path: '/worker/generate-qr' },
         { label: 'Receive Payment', icon: Wallet, path: '/scan-qr' },
-        { label: 'Welfare Benefits', icon: Heart, path: '/worker/benefits' },
         { label: 'Profile', icon: UserCog, path: '/worker/profile' },
       ];
     case 'employer':

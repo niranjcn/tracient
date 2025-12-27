@@ -7,7 +7,6 @@ import {
   Calendar,
   ArrowRight,
   BadgeCheck,
-  Heart,
   History,
   AlertCircle,
   IndianRupee
@@ -36,7 +35,6 @@ const mockDashboardData = {
   lastPaymentDate: new Date().toISOString(),
   bplStatus: 'eligible' as const,
   annualIncome: 125000,
-  pendingBenefits: 3,
   trend: 8.5,
   monthlyIncome: [
     { month: 'Jan', amount: 9500 },
@@ -122,7 +120,7 @@ const WorkerDashboard: React.FC = () => {
             Welcome back, {user?.name?.split(' ')[0]}!
           </h1>
           <p className="text-gray-500 mt-1">
-            Here's an overview of your income and benefits
+            Here's an overview of your income and status
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -181,30 +179,14 @@ const WorkerDashboard: React.FC = () => {
             </CardContent>
           </Card>
         </Link>
-        <Link to="/worker/bpl-status" className="block">
+        <Link to="/worker/welfare" className="block">
           <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
             <CardContent className="p-4 flex flex-col items-center justify-center text-center">
               <div className="p-3 rounded-xl bg-green-100 mb-3">
                 <BadgeCheck className="h-6 w-6 text-green-600" />
               </div>
-              <p className="font-medium text-gray-900">BPL Status</p>
+              <p className="font-medium text-gray-900">Welfare Eligibility</p>
               <p className="text-xs text-gray-500 mt-1">Check eligibility</p>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link to="/worker/benefits" className="block">
-          <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
-            <CardContent className="p-4 flex flex-col items-center justify-center text-center relative">
-              <div className="p-3 rounded-xl bg-purple-100 mb-3">
-                <Heart className="h-6 w-6 text-purple-600" />
-              </div>
-              <p className="font-medium text-gray-900">Benefits</p>
-              <p className="text-xs text-gray-500 mt-1">View schemes</p>
-              {data.pendingBenefits > 0 && (
-                <span className="absolute top-2 right-2 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                  {data.pendingBenefits}
-                </span>
-              )}
             </CardContent>
           </Card>
         </Link>
@@ -297,30 +279,6 @@ const WorkerDashboard: React.FC = () => {
           </div>
         </CardContent>
       </Card>
-
-      {/* Benefits Alert */}
-      {data.pendingBenefits > 0 && (
-        <Card className="border-l-4 border-l-amber-500 bg-amber-50">
-          <CardContent className="p-4">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5" />
-              <div className="flex-1">
-                <p className="font-medium text-amber-800">
-                  You have {data.pendingBenefits} pending welfare benefits
-                </p>
-                <p className="text-sm text-amber-700 mt-1">
-                  Review and claim your eligible benefits before they expire.
-                </p>
-              </div>
-              <Link to="/worker/benefits">
-                <Button size="sm" variant="outline" className="border-amber-600 text-amber-700 hover:bg-amber-100">
-                  View Benefits
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 };
