@@ -4,4 +4,3 @@ export { default as wageService } from './wageService';
 export { default as userService } from './userService';
 export { default as analyticsService } from './analyticsService';
 export { default as familyService } from './familyService';
-export * from './qrService';

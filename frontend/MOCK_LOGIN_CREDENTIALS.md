@@ -48,7 +48,7 @@ These worker accounts are pre-registered in the backend and can generate QR code
 ### How to Test QR Code & Payment
 
 1. **Login as Worker:** Use credentials above
-2. **Go to QR Code Page:** Navigate to `/worker/qr-code`
+2. **Go to Generate QR Page:** Navigate to `/worker/generate-qr`
 3. **Generate QR Code:** Click "Generate QR Code"
 4. **Copy Token:** Copy the token from the "Token (for testing)" box
 5. **Simulate Payment:** Run in PowerShell (see backend README):

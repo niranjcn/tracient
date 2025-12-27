@@ -14,6 +14,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import { connectDB } from './config/database.js';
+import { initFabricGateway } from './config/fabric.js';
 import routes from './routes/index.js';
 import { errorHandler, notFoundHandler } from './middleware/error.middleware.js';
 import { requestLogger } from './middleware/logger.middleware.js';
@@ -106,6 +107,23 @@ const startServer = async () => {
     console.log('Attempting to connect to MongoDB...');
     await connectDB();
     console.log('MongoDB connected successfully!');
+    
+    // Initialize Hyperledger Fabric Gateway
+    if (process.env.FABRIC_ENABLED === 'true') {
+      console.log('Initializing Hyperledger Fabric Gateway...');
+      try {
+        const fabricStatus = await initFabricGateway();
+        if (fabricStatus) {
+          logger.info('✓ Hyperledger Fabric Gateway initialized successfully');
+        } else {
+          logger.warn('⚠ Fabric Gateway not available - using mock mode');
+        }
+      } catch (fabricError) {
+        logger.warn('⚠ Fabric initialization warning:', fabricError.message);
+      }
+    } else {
+      logger.info('ℹ Fabric integration is disabled (set FABRIC_ENABLED=true to enable)');
+    }
     
     // Start Express server
     app.listen(PORT, () => {

@@ -23,7 +23,6 @@ const WorkerDashboard = React.lazy(() => import('./pages/worker/Dashboard'));
 const WageHistory = React.lazy(() => import('./pages/worker/WageHistory'));
 const BPLStatus = React.lazy(() => import('./pages/worker/BPLStatus'));
 const WorkerProfile = React.lazy(() => import('./pages/worker/Profile'));
-const WorkerQRPage = React.lazy(() => import('./pages/worker/QRPage'));
 const WorkerFamily = React.lazy(() => import('./pages/worker/Family'));
 const WorkerFamilySurvey = React.lazy(() => import('./pages/worker/FamilySurvey'));
 const BankAccounts = React.lazy(() => import('./pages/worker/BankAccounts'));
@@ -103,7 +102,6 @@ const App: React.FC = () => {
           <Route path="bank-accounts" element={<BankAccounts />} />
           <Route path="generate-qr" element={<GenerateQR />} />
           <Route path="profile" element={<WorkerProfile />} />
-          <Route path="qr-code" element={<WorkerQRPage />} />
         </Route>
 
         {/* Public QR Payment Route (no auth needed) */}

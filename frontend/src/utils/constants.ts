@@ -38,7 +38,6 @@ export const ROUTES = {
   WORKER_DASHBOARD: '/worker/dashboard',
   WORKER_WAGES: '/worker/wages',
   WORKER_PROFILE: '/worker/profile',
-  WORKER_QR: '/worker/qr-code',
   
   // Employer routes
   EMPLOYER_DASHBOARD: '/employer/dashboard',

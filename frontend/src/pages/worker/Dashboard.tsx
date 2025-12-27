@@ -8,7 +8,6 @@ import {
   ArrowRight,
   BadgeCheck,
   Heart,
-  QrCode,
   History,
   AlertCircle,
   IndianRupee
@@ -128,12 +127,6 @@ const WorkerDashboard: React.FC = () => {
         </div>
         <div className="flex items-center gap-3">
           <BPLBadge status={data.bplStatus} showLabel />
-          <Link to="/worker/qr-code">
-            <Button variant="outline" size="sm">
-              <QrCode className="h-4 w-4 mr-2" />
-              My QR Code
-            </Button>
-          </Link>
         </div>
       </div>
 
@@ -219,10 +212,10 @@ const WorkerDashboard: React.FC = () => {
           <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
             <CardContent className="p-4 flex flex-col items-center justify-center text-center">
               <div className="p-3 rounded-xl bg-orange-100 mb-3">
-                <QrCode className="h-6 w-6 text-orange-600" />
+                <BadgeCheck className="h-6 w-6 text-orange-600" />
               </div>
-              <p className="font-medium text-gray-900">QR Code</p>
-              <p className="text-xs text-gray-500 mt-1">For verification</p>
+              <p className="font-medium text-gray-900">Profile</p>
+              <p className="text-xs text-gray-500 mt-1">View settings</p>
             </CardContent>
           </Card>
         </Link>
