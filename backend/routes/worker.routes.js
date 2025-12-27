@@ -260,6 +260,32 @@ router.post(
 );
 
 /**
+ * @route POST /api/workers/qr/verify
+ * @desc Verify QR token and get recipient details
+ * @access Public
+ */
+router.post(
+  '/qr/verify',
+  body('token').notEmpty().withMessage('QR token is required'),
+  validate,
+  workerController.verifyQRToken
+);
+
+/**
+ * @route POST /api/workers/qr/deposit
+ * @desc Process payment deposit via QR code
+ * @access Public
+ */
+router.post(
+  '/qr/deposit',
+  body('token').notEmpty().withMessage('QR token is required'),
+  body('amount').isFloat({ min: 1 }).withMessage('Amount must be greater than 0'),
+  body('payerName').optional().isString(),
+  validate,
+  workerController.depositViaQR
+);
+
+/**
  * @route DELETE /api/workers/:id
  * @desc Delete (deactivate) worker
  * @access Private (Admin)

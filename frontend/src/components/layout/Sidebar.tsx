@@ -59,6 +59,7 @@ const getNavItems = (role: UserRole): NavItem[] => {
         { label: 'Workers', icon: Users, path: '/employer/workers' },
         { label: 'Family', icon: UsersRound, path: '/employer/family' },
         { label: 'Payment History', icon: History, path: '/employer/payments' },
+        { label: 'Send Payment', icon: QrCode, path: '/scan-qr' },
         { label: 'Reports', icon: FileText, path: '/employer/reports' },
       ];
     case 'government':
@@ -78,6 +79,7 @@ const getNavItems = (role: UserRole): NavItem[] => {
         { label: 'System Health', icon: Server, path: '/admin/system' },
         { label: 'Network Topology', icon: Activity, path: '/admin/network' },
         { label: 'Security', icon: Shield, path: '/admin/security' },
+        { label: 'Send Payment', icon: QrCode, path: '/scan-qr' },
       ];
     default:
       return [];

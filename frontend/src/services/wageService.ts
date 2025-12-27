@@ -64,6 +64,31 @@ export const wageService = {
     return post(`/upi/qr/generate`, { workerHash: workerIDHash });
   },
 
+  // Get worker profile
+  getWorkerProfile: async (): Promise<any> => {
+    return get('/workers/profile');
+  },
+
+  // Update worker profile
+  updateWorkerProfile: async (data: any): Promise<any> => {
+    return put('/workers/profile', data);
+  },
+
+  // Generate QR code for bank account
+  generateQRCode: async (accountId: string): Promise<any> => {
+    return post('/workers/qr/generate', { accountId });
+  },
+
+  // Verify QR token
+  verifyQRToken: async (token: string): Promise<any> => {
+    return post('/workers/qr/verify', { token });
+  },
+
+  // Process payment via QR
+  processQRPayment: async (token: string, amount: number, payerName?: string): Promise<any> => {
+    return post('/workers/qr/deposit', { token, amount, payerName });
+  },
+
   // Get employer payment summary
   getEmployerPaymentSummary: async (employerIDHash: string, month?: number, year?: number): Promise<PaymentSummary> => {
     return get(`/employer/payment-summary/${employerIDHash}`, { month, year });
@@ -92,21 +117,6 @@ export const wageService = {
   // Download wage report
   downloadReport: async (idHash: string, type: 'worker' | 'employer', format: 'pdf' | 'excel', params?: WageQueryParams): Promise<Blob> => {
     return get(`/wages/report/${type}/${idHash}`, { ...params, format });
-  },
-
-  // Get worker profile (personal and address info)
-  getWorkerProfile: async (): Promise<any> => {
-    return get('/workers/profile');
-  },
-
-  // Update worker profile (personal and address info)
-  updateWorkerProfile: async (data: any): Promise<any> => {
-    return put('/workers/profile', data);
-  },
-
-  // Generate QR code for bank account
-  generateQRCode: async (accountId: string): Promise<any> => {
-    return post('/workers/qr/generate', { accountId });
   },
 };
 

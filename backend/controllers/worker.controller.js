@@ -1,7 +1,7 @@
 /**
  * Worker Controller
  */
-import { Worker, User, WageRecord, AuditLog } from '../models/index.js';
+import { Worker, User, WageRecord, AuditLog, UPITransaction } from '../models/index.js';
 import { generateIdHash } from '../utils/hash.util.js';
 import { calculateBPLStatus, calculateIncomeTrend } from '../utils/bpl.util.js';
 import { successResponse, createdResponse, errorResponse, notFoundResponse, paginatedResponse } from '../utils/response.util.js';
@@ -966,6 +966,186 @@ export const generateQRForAccount = async (req, res) => {
   }
 };
 
+/**
+ * Verify QR token and return recipient details
+ */
+export const verifyQRToken = async (req, res) => {
+  try {
+    let { token } = req.body;
+
+    if (!token) {
+      return errorResponse(res, 'QR token is required', 400);
+    }
+
+    token = token.trim();
+
+    // Decode token
+    let tokenData;
+    try {
+      const decoded = Buffer.from(token, 'base64').toString();
+      tokenData = JSON.parse(decoded);
+    } catch (error) {
+      return errorResponse(res, 'Invalid QR token format', 400);
+    }
+
+    const { workerIdHash, accountId, expiresAt } = tokenData;
+
+    // Check expiry
+    if (new Date() > new Date(expiresAt)) {
+      return errorResponse(res, 'QR code has expired', 400);
+    }
+
+    // Find worker
+    const worker = await Worker.findOne({ idHash: workerIdHash });
+    if (!worker) {
+      return errorResponse(res, 'Worker not registered', 404);
+    }
+
+    const account = worker.bankAccounts?.id(accountId);
+    if (!account) {
+      return errorResponse(res, 'Bank account not found', 404);
+    }
+
+    logger.info('QR code verified', {
+      workerId: worker._id,
+      accountNumber: account.accountNumber.slice(-4)
+    });
+
+    return successResponse(res, {
+      workerHash: workerIdHash,
+      accountId: accountId,
+      bankName: account.bankName,
+      accountHolderName: account.accountHolderName,
+      accountNumberMasked: `****${account.accountNumber.slice(-4)}`,
+      ifscCode: account.ifscCode,
+      country: account.country,
+      isValid: true,
+      expiresAt: expiresAt
+    }, 'QR code verified');
+
+  } catch (error) {
+    logger.error('Verify QR error:', error);
+    return errorResponse(res, 'Failed to verify QR code', 500);
+  }
+};
+
+/**
+ * Simulate payment deposit via QR code
+ */
+export const depositViaQR = async (req, res) => {
+  try {
+    const { token, amount, payerName = 'Anonymous' } = req.body;
+
+    if (!token || !amount) {
+      return errorResponse(res, 'Token and amount are required', 400);
+    }
+
+    // Decode QR token
+    let qrData;
+    try {
+      const decoded = Buffer.from(token, 'base64').toString();
+      qrData = JSON.parse(decoded);
+    } catch (error) {
+      return errorResponse(res, 'Invalid QR token format', 400);
+    }
+
+    const { workerIdHash, accountId } = qrData;
+
+    // Find worker and account
+    const worker = await Worker.findOne({ idHash: workerIdHash });
+    if (!worker) {
+      return errorResponse(res, 'Worker not found', 404);
+    }
+
+    const account = worker.bankAccounts?.id(accountId);
+    if (!account) {
+      return errorResponse(res, 'Bank account not found', 404);
+    }
+
+    // Check QR expiry
+    const expiryTime = new Date(qrData.expiresAt);
+    if (new Date() > expiryTime) {
+      return errorResponse(res, 'QR code has expired', 400);
+    }
+
+    // Validate amount
+    if (amount <= 0 || amount > 1000000) {
+      return errorResponse(res, 'Invalid amount. Must be between 1 and 1000000', 400);
+    }
+
+    // Update balance
+    const previousBalance = account.balance || 0;
+    account.balance = previousBalance + amount;
+    account.balanceLastUpdated = new Date();
+
+    // Update monthly income
+    if (!account.monthlyIncome) {
+      account.monthlyIncome = 0;
+    }
+    account.monthlyIncome += amount;
+
+    // Update worker total earnings
+    worker.totalEarnings = (worker.totalEarnings || 0) + amount;
+    worker.balance = (worker.balance || 0) + amount;
+
+    await worker.save();
+
+    // Create transaction record
+    const transactionId = `TXN-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+    
+    const transaction = await UPITransaction.create({
+      txId: transactionId,
+      workerId: worker._id,
+      workerHash: workerIdHash,
+      workerName: worker.name,
+      workerAccount: account.accountNumber,
+      payerName: payerName,
+      amount: amount,
+      status: 'success',
+      paymentMethod: 'QR_SCAN',
+      bankName: account.bankName,
+      ifscCode: account.ifscCode,
+      timestamp: new Date()
+    });
+
+    // Log audit trail
+    await AuditLog.log({
+      action: 'payment_received',
+      category: 'transaction',
+      userId: worker.userId,
+      resourceType: 'Worker',
+      resourceId: worker._id,
+      details: {
+        amount: amount,
+        transactionId: transactionId,
+        paymentMethod: 'QR_SCAN'
+      }
+    });
+
+    logger.info('Payment via QR received', {
+      workerId: worker._id,
+      transactionId: transactionId,
+      amount: amount,
+      accountNumber: account.accountNumber.slice(-4)
+    });
+
+    return successResponse(res, {
+      transactionId: transactionId,
+      amount: amount,
+      bankName: account.bankName,
+      accountHolderName: account.accountHolderName,
+      newBalance: account.balance,
+      previousBalance: previousBalance,
+      timestamp: new Date().toISOString(),
+      accountNumber: `****${account.accountNumber.slice(-4)}`
+    }, 'Payment successful');
+
+  } catch (error) {
+    logger.error('Deposit via QR error:', error);
+    return errorResponse(res, error.message, 500);
+  }
+};
+
 export default {
   createWorker,
   getWorkers,
@@ -986,7 +1166,9 @@ export default {
   updateBankAccount,
   deleteBankAccount,
   setDefaultBankAccount,
-  generateQRForAccount
+  generateQRForAccount,
+  verifyQRToken,
+  depositViaQR
 };
 
 

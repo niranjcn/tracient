@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Smartphone, QrCode, AlertCircle, CheckCircle, ArrowRight } from 'lucide-react';
+import { Smartphone, QrCode, AlertCircle, CheckCircle, ArrowRight, Camera } from 'lucide-react';
 import { Button, Card, Alert, Input } from '@/components/common';
 import { toast } from 'react-hot-toast';
 import api from '@/services/api';
@@ -29,7 +29,54 @@ export default function ScanQRPage() {
   const [paymentDetails, setPaymentDetails] = useState<PaymentDetails | null>(null);
   const [loading, setLoading] = useState(false);
   const [depositResult, setDepositResult] = useState<DepositResponse | null>(null);
+  const [showCamera, setShowCamera] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+
   const amountInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  const startCamera = async () => {
+    try {
+      setCameraError(null);
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' }
+      });
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        streamRef.current = stream;
+        setShowCamera(true);
+      }
+    } catch (error: any) {
+      const errorMsg = error.name === 'NotAllowedError'
+        ? 'Camera permission denied. Please allow camera access.'
+        : 'Could not access camera. Please check if your device has a camera.';
+      setCameraError(errorMsg);
+      toast.error(errorMsg);
+    }
+  };
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    setShowCamera(false);
+  };
+
+  const handlePasteQR = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        setQrToken(text);
+        stopCamera();
+        await verifyQRToken(text);
+      }
+    } catch (error) {
+      toast.error('Could not read clipboard');
+    }
+  };
 
   const handleVerifyQR = async () => {
     if (!qrToken.trim()) {
@@ -37,22 +84,46 @@ export default function ScanQRPage() {
       return;
     }
 
+    await verifyQRToken(qrToken.trim());
+  };
+
+  const verifyQRToken = async (token: string) => {
     setLoading(true);
     try {
+      console.log('Verifying QR token:', token.substring(0, 20) + '...');
+      
       const response = await api.post('/workers/qr/verify', {
-        token: qrToken.trim()
+        token: token
       });
 
+      console.log('QR verification response:', response);
       setPaymentDetails(response.data);
       setStep('payment');
       setAmount('');
+      setShowCamera(false);
       toast.success('QR code verified successfully!');
-      
-      // Focus amount input
+
       setTimeout(() => amountInputRef.current?.focus(), 100);
     } catch (error: any) {
       console.error('Error verifying QR:', error);
-      toast.error(error.message || 'Invalid QR token');
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response,
+        token: token.substring(0, 20) + '...'
+      });
+      
+      // More specific error messages
+      if (error.message.includes('Invalid QR token')) {
+        toast.error('Invalid QR code format. Please check and try again.');
+      } else if (error.message.includes('expired')) {
+        toast.error('QR code has expired. Please generate a new one.');
+      } else if (error.message.includes('not found')) {
+        toast.error('Worker or account not found. Please verify the QR code.');
+      } else if (error.message.includes('Network')) {
+        toast.error('Cannot connect to server. Please check your connection.');
+      } else {
+        toast.error(error.message || 'Failed to verify QR code. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -92,6 +163,7 @@ export default function ScanQRPage() {
     setAmount('');
     setPaymentDetails(null);
     setDepositResult(null);
+    stopCamera();
   };
 
   const formatCurrency = (value: number) => {
@@ -121,34 +193,105 @@ export default function ScanQRPage() {
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">Step 1: Enter QR Token</h2>
                 <p className="text-gray-600">
-                  Paste the QR token from the worker's QR code
+                  Scan with camera or paste the QR token from the worker's QR code
                 </p>
               </div>
 
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    QR Token
-                  </label>
-                  <textarea
-                    value={qrToken}
-                    onChange={(e) => setQrToken(e.target.value)}
-                    placeholder="Paste the QR token here..."
-                    className="w-full h-32 px-4 py-3 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
+              {showCamera ? (
+                // Camera View
+                <div className="space-y-4">
+                  <div className="relative bg-black rounded-lg overflow-hidden">
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      className="w-full aspect-square object-cover"
+                    />
 
-                <Button
-                  onClick={handleVerifyQR}
-                  isLoading={loading}
-                  disabled={!qrToken.trim() || loading}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 flex items-center justify-center gap-2"
-                >
-                  <QrCode size={20} />
-                  Verify QR Code
-                  <ArrowRight size={20} />
-                </Button>
-              </div>
+                    {/* Camera Controls */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-between p-4">
+                      {/* Top */}
+                      <div className="text-white text-center">
+                        <p className="text-sm font-semibold">Scanning for QR Code</p>
+                      </div>
+
+                      {/* QR Frame */}
+                      <div className="relative w-64 h-64 border-4 border-blue-500 rounded-lg">
+                        <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-blue-500"></div>
+                        <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-blue-500"></div>
+                        <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-blue-500"></div>
+                        <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-blue-500"></div>
+                      </div>
+
+                      {/* Bottom */}
+                      <p className="text-white text-sm">Point camera at QR code</p>
+                    </div>
+                  </div>
+
+                  {/* Camera Buttons */}
+                  <div className="flex gap-3">
+                    <Button
+                      onClick={handlePasteQR}
+                      variant="outline"
+                      className="flex-1"
+                    >
+                      Paste from Clipboard
+                    </Button>
+                    <Button
+                      onClick={stopCamera}
+                      variant="outline"
+                      className="flex-1"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+
+                  {cameraError && (
+                    <Alert variant="error">
+                      <AlertCircle size={20} />
+                      {cameraError}
+                    </Alert>
+                  )}
+                </div>
+              ) : (
+                // Manual Input
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      QR Token
+                    </label>
+                    <textarea
+                      value={qrToken}
+                      onChange={(e) => setQrToken(e.target.value)}
+                      placeholder="Paste the QR token here..."
+                      className="w-full h-32 px-4 py-3 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <div className="flex gap-3">
+                    {navigator.mediaDevices && (
+                      <Button
+                        onClick={startCamera}
+                        variant="outline"
+                        className="flex-1 flex items-center justify-center gap-2"
+                      >
+                        <Camera size={20} />
+                        Scan Camera
+                      </Button>
+                    )}
+                    <Button
+                      onClick={handleVerifyQR}
+                      isLoading={loading}
+                      disabled={!qrToken.trim() || loading}
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 flex items-center justify-center gap-2"
+                    >
+                      <QrCode size={20} />
+                      Verify QR Code
+                      <ArrowRight size={20} />
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               {/* Info */}
               <Alert variant="info">
@@ -156,9 +299,9 @@ export default function ScanQRPage() {
                 <div>
                   <strong>How to use:</strong>
                   <ul className="mt-2 ml-4 space-y-1 text-sm list-disc">
-                    <li>Ask the worker to scan their QR code</li>
-                    <li>Copy the QR token from their page</li>
-                    <li>Paste it here and verify</li>
+                    <li>Ask the worker to generate their QR code</li>
+                    <li>Scan with camera OR copy and paste the token</li>
+                    <li>Verify the recipient details</li>
                     <li>Enter the payment amount</li>
                     <li>Complete the payment</li>
                   </ul>
@@ -264,7 +407,7 @@ export default function ScanQRPage() {
               {/* Receipt */}
               <div className="p-6 bg-gray-50 rounded-lg space-y-4 border-2 border-gray-200">
                 <h3 className="font-semibold text-gray-900 text-lg">Transaction Receipt</h3>
-                
+
                 <div className="space-y-3 divide-y divide-gray-300">
                   <div className="flex justify-between pt-3">
                     <span className="text-gray-600">Transaction ID</span>
@@ -353,7 +496,7 @@ export default function ScanQRPage() {
                 <p className="text-sm font-semibold text-blue-900">Mock UPI System</p>
               </div>
               <p className="text-xs text-blue-800">
-                This demonstrates a UPI payment flow. All transactions are securely recorded.
+                This demonstrates a UPI payment flow with camera QR scanning support.
               </p>
             </div>
           </Card>
