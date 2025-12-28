@@ -285,7 +285,17 @@ func (s *SmartContract) ReadWage(ctx contractapi.TransactionContextInterface, wa
 }
 
 // WageExists checks whether a wage record is already stored.
+// SECURITY: All authenticated users can check if a wage exists.
 func (s *SmartContract) WageExists(ctx contractapi.TransactionContextInterface, wageID string) (bool, error) {
+	// IAM Check
+	if IAMEnabled {
+		_, err := CheckAccess(ctx, "WageExists")
+		if err != nil {
+			s.LogAccessDenied(ctx, "WageExists", wageID, "wage", err.Error())
+			return false, fmt.Errorf("access denied: %w", err)
+		}
+	}
+	
 	payload, err := ctx.GetStub().GetState(wageID)
 	if err != nil {
 		return false, fmt.Errorf("get state: %w", err)
@@ -655,16 +665,17 @@ func (s *SmartContract) RecordUPITransaction(ctx contractapi.TransactionContextI
 	timestamp := time.Now().UTC().Format(time.RFC3339)
 
 	tx := UPITransaction{
-		DocType:        "upi",
-		TxID:           txID,
-		WorkerIDHash:   workerIDHash,
-		Amount:         amount,
-		Currency:       currency,
-		SenderName:     senderName,
-		SenderPhone:    senderPhone,
-		TransactionRef: transactionRef,
-		Timestamp:      timestamp,
-		PaymentMethod:  paymentMethod,
+		DocType:          "upi",
+		TxID:             txID,
+		WorkerIDHash:     workerIDHash,
+		Amount:           amount,
+		Currency:         currency,
+		SenderName:       senderName,
+		SenderPhone:      senderPhone,
+		TransactionRef:   transactionRef,
+		Timestamp:        timestamp,
+		PaymentMethod:    paymentMethod,
+		OnChainReference: fmt.Sprintf("UPI_%s", txID), // Set the on-chain reference
 	}
 
 	payload, err := json.Marshal(tx)
@@ -687,7 +698,17 @@ func (s *SmartContract) RecordUPITransaction(ctx contractapi.TransactionContextI
 }
 
 // UPITransactionExists checks whether a UPI transaction has been recorded.
+// SECURITY: All authenticated users can check if a UPI transaction exists.
 func (s *SmartContract) UPITransactionExists(ctx contractapi.TransactionContextInterface, txID string) (bool, error) {
+	// IAM Check
+	if IAMEnabled {
+		_, err := CheckAccess(ctx, "UPITransactionExists")
+		if err != nil {
+			s.LogAccessDenied(ctx, "UPITransactionExists", txID, "upi", err.Error())
+			return false, fmt.Errorf("access denied: %w", err)
+		}
+	}
+	
 	key := fmt.Sprintf("UPI_%s", txID)
 	payload, err := ctx.GetStub().GetState(key)
 	if err != nil {
@@ -969,7 +990,17 @@ func (s *SmartContract) VerifyUserRole(ctx contractapi.TransactionContextInterfa
 }
 
 // UserExists checks whether a user is registered.
+// SECURITY: All authenticated users can check if a user exists.
 func (s *SmartContract) UserExists(ctx contractapi.TransactionContextInterface, userIDHash string) (bool, error) {
+	// IAM Check
+	if IAMEnabled {
+		_, err := CheckAccess(ctx, "UserExists")
+		if err != nil {
+			s.LogAccessDenied(ctx, "UserExists", userIDHash, "user", err.Error())
+			return false, fmt.Errorf("access denied: %w", err)
+		}
+	}
+	
 	key := fmt.Sprintf("USER_%s", userIDHash)
 	payload, err := ctx.GetStub().GetState(key)
 	if err != nil {
