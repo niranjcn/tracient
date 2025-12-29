@@ -20,6 +20,12 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
+# Helper functions
+print_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
+print_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
+print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+print_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
+
 # Auto-detect script directory
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 NETWORK_DIR="${SCRIPT_DIR}/network/test-network"
@@ -30,11 +36,6 @@ CHANNEL_NAME="mychannel"
 CHAINCODE_NAME="tracient"
 CHAINCODE_VERSION="2.0"
 CHAINCODE_SEQUENCE="1"
-
-print_status() { echo -e "${GREEN}✓${NC} $1"; }
-print_warning() { echo -e "${YELLOW}⚠${NC} $1"; }
-print_error() { echo -e "${RED}✗${NC} $1"; }
-print_info() { echo -e "${BLUE}ℹ${NC} $1"; }
 
 # Parse arguments
 for arg in "$@"; do
@@ -52,9 +53,10 @@ for arg in "$@"; do
     esac
 done
 
-echo -e "${CYAN}╔════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${CYAN}║      TRACIENT Chaincode Deployment                         ║${NC}"
-echo -e "${CYAN}╚════════════════════════════════════════════════════════════╝${NC}"
+echo ""
+echo "============================================================"
+echo "      TRACIENT Chaincode Deployment"
+echo "============================================================"
 echo ""
 
 # Step 1: Check prerequisites
@@ -65,14 +67,14 @@ if ! command -v go &> /dev/null; then
     print_error "Go not found. Run: ./install-go.sh"
     exit 1
 fi
-print_status "Go found: $(go version | cut -d' ' -f3)"
+print_info "Go found: $(go version | awk '{print $3}')"
 
 # Check chaincode exists
 if [ ! -f "${CHAINCODE_PATH}/chaincode.go" ]; then
     print_error "Chaincode not found at: ${CHAINCODE_PATH}"
     exit 1
 fi
-print_status "Chaincode found"
+print_info "Chaincode found at: ${CHAINCODE_PATH}"
 
 # Check network is running
 cd "$NETWORK_DIR"
@@ -80,7 +82,7 @@ if ! docker ps | grep -q "peer0.org1.example.com"; then
     print_error "Network is not running. Start it with: ./restart-network.sh or ./start-network.sh"
     exit 1
 fi
-print_status "Network is running"
+print_success "Network is running"
 echo ""
 
 # Step 2: Set up environment
@@ -92,7 +94,7 @@ export CORE_PEER_LOCALMSPID="Org1MSP"
 export CORE_PEER_TLS_ROOTCERT_FILE="${NETWORK_DIR}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt"
 export CORE_PEER_MSPCONFIGPATH="${NETWORK_DIR}/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp"
 export CORE_PEER_ADDRESS=localhost:7051
-print_status "Environment configured"
+print_success "Environment configured"
 echo ""
 
 # Step 3: Check current chaincode status
@@ -106,7 +108,7 @@ if echo "$COMMITTED" | grep -q "Version:"; then
     
     print_info "Current chaincode: v${CURRENT_VERSION}, sequence ${CURRENT_SEQ}"
     
-    # Auto-increment sequence - extract just the integer part
+    # Auto-increment sequence
     CURRENT_SEQ_INT=$(echo "$CURRENT_SEQ" | grep -oE '^[0-9]+' || echo "$CURRENT_SEQ")
     CHAINCODE_SEQUENCE=$((CURRENT_SEQ_INT + 1))
     
@@ -122,7 +124,6 @@ echo ""
 
 # Step 4: Deploy chaincode
 echo "[4/5] Deploying chaincode v${CHAINCODE_VERSION} (sequence ${CHAINCODE_SEQUENCE})..."
-print_info "This may take a few minutes..."
 
 # Remove old package if exists
 rm -f "${NETWORK_DIR}/tracient.tar.gz" 2>/dev/null || true
@@ -148,43 +149,28 @@ if [ $? -ne 0 ]; then
     print_error "Chaincode deployment failed"
     exit 1
 fi
-print_status "Chaincode deployed successfully"
-echo ""
 
+echo ""
 # Step 5: Verify deployment
 echo "[5/5] Verifying deployment..."
 
-# Check if committed
-COMMITTED=$(peer lifecycle chaincode querycommitted -C $CHANNEL_NAME -n $CHAINCODE_NAME 2>&1 || true)
-if echo "$COMMITTED" | grep -q "Version: ${CHAINCODE_VERSION}"; then
-    print_status "Chaincode committed to channel"
-else
-    print_warning "Chaincode commit verification inconclusive"
-fi
+RESULT=$(peer lifecycle chaincode querycommitted -C $CHANNEL_NAME -n $CHAINCODE_NAME 2>&1)
 
-# Test a simple query
-sleep 2
-RESULT=$(peer chaincode query -C $CHANNEL_NAME -n $CHAINCODE_NAME -c '{"function":"WageExists","Args":["WAGE001"]}' 2>&1 || true)
-if echo "$RESULT" | grep -q "true\|false"; then
-    print_status "Chaincode responding to queries"
+if echo "$RESULT" | grep -q "Version: ${CHAINCODE_VERSION}"; then
+    print_success "Chaincode deployed successfully!"
 else
-    print_warning "Query test returned unexpected result"
+    print_warning "Deployment may have issues. Check the output above."
 fi
 
 echo ""
-echo -e "${GREEN}════════════════════════════════════════════════════════════${NC}"
-echo -e "${GREEN}✓ Chaincode Deployment Complete${NC}"
-echo -e "${GREEN}════════════════════════════════════════════════════════════${NC}"
+echo "============================================================"
+echo "      Deployment Complete!"
+echo "============================================================"
 echo ""
-echo "Deployment Details:"
-echo "  • Chaincode: $CHAINCODE_NAME"
-echo "  • Version: $CHAINCODE_VERSION"
-echo "  • Sequence: $CHAINCODE_SEQUENCE"
-echo "  • Channel: $CHANNEL_NAME"
+echo "Chaincode: ${CHAINCODE_NAME}"
+echo "Version:   ${CHAINCODE_VERSION}"
+echo "Sequence:  ${CHAINCODE_SEQUENCE}"
+echo "Channel:   ${CHANNEL_NAME}"
 echo ""
-echo "Test with:"
-echo "  ./test-chaincode.sh"
-echo ""
-echo "Or manual query:"
-echo "  peer chaincode query -C mychannel -n tracient -c '{\"function\":\"ReadWage\",\"Args\":[\"WAGE001\"]}'"
-echo ""
+echo "Test with: ./quick-test.sh"
+echo "============================================================"

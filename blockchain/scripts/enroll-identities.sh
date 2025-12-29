@@ -11,20 +11,31 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# Paths
-NETWORK_PATH="/mnt/e/Major-Project/fabric-samples/test-network"
+# Paths - Use the test-network in blockchain/network folder
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BLOCKCHAIN_DIR="${SCRIPT_DIR}/.."
+NETWORK_PATH="${BLOCKCHAIN_DIR}/network/test-network"
 ORG1_CA_CERT="${NETWORK_PATH}/organizations/fabric-ca/org1/ca-cert.pem"
 ORG2_CA_CERT="${NETWORK_PATH}/organizations/fabric-ca/org2/ca-cert.pem"
 
 # Add bin to PATH
-export PATH="${NETWORK_PATH}/../bin:$PATH"
+export PATH="${BLOCKCHAIN_DIR}/network/bin:$PATH"
 
-echo -e "${BLUE}=======================================${NC}"
-echo -e "${BLUE}  TRACIENT IDENTITY ENROLLMENT${NC}"
-echo -e "${BLUE}=======================================${NC}"
 echo ""
+echo "======================================="
+echo "  TRACIENT IDENTITY ENROLLMENT"
+echo "======================================="
+echo ""
+
+# Check if CA cert exists
+if [ ! -f "$ORG1_CA_CERT" ]; then
+    echo -e "${RED}[ERROR]${NC} CA cert not found at: $ORG1_CA_CERT"
+    echo "Make sure the network is running with CA enabled."
+    echo "Run: ./fresh-start.sh to restart the network with CAs"
+    exit 1
+fi
 
 # Function to set Org1 CA admin environment
 set_org1_ca_admin() {
@@ -51,14 +62,14 @@ register_and_enroll() {
     
     echo -e "${YELLOW}Registering ${display_name} (${username})...${NC}"
     
-    # Register the user with attributes (use proper fabric-ca format)
+    # Register the user with attributes
     fabric-ca-client register --caname ${ca_name} \
         --id.name ${username} \
         --id.secret ${password} \
         --id.type ${user_type} \
         --id.attrs "role=${role},clearanceLevel=${clearance}" \
         --tls.certfiles ${ca_cert} 2>&1 || {
-            echo -e "${RED}User ${username} may already be registered, continuing...${NC}"
+            echo -e "${YELLOW}User ${username} may already be registered, continuing...${NC}"
         }
     
     echo -e "${YELLOW}Enrolling ${display_name}...${NC}"
@@ -66,28 +77,31 @@ register_and_enroll() {
     # Create user directory
     mkdir -p "${org_path}/users/${username}/msp"
     
-    # Enroll the user (attributes are embedded in cert during registration)
+    # Enroll the user
     fabric-ca-client enroll \
         -u https://${username}:${password}@localhost:${ca_port} \
         --caname ${ca_name} \
         -M "${org_path}/users/${username}/msp" \
-        --tls.certfiles ${ca_cert}
+        --tls.certfiles ${ca_cert} || {
+            echo -e "${YELLOW}Enrollment failed for ${username}, may already be enrolled${NC}"
+            return 0
+        }
     
     # Copy config.yaml for NodeOUs
     if [ -f "${org_path}/msp/config.yaml" ]; then
         cp "${org_path}/msp/config.yaml" "${org_path}/users/${username}/msp/config.yaml"
     fi
     
-    echo -e "${GREEN}✓ ${display_name} enrolled successfully${NC}"
+    echo -e "${GREEN}[OK] ${display_name} enrolled successfully${NC}"
     echo ""
 }
 
 # ============================================
 # ORG1 IDENTITIES (Government/Public Sector)
 # ============================================
-echo -e "${BLUE}=======================================${NC}"
-echo -e "${BLUE}  Org1 Identities (Government Sector)${NC}"
-echo -e "${BLUE}=======================================${NC}"
+echo "======================================="
+echo "  Org1 Identities (Government Sector)"
+echo "======================================="
 echo ""
 
 set_org1_ca_admin
@@ -131,9 +145,9 @@ register_and_enroll "ca-org1" "7054" "${ORG1_CA_CERT}" \
 # ============================================
 # ORG2 IDENTITIES (Private Sector/Employers)
 # ============================================
-echo -e "${BLUE}=======================================${NC}"
-echo -e "${BLUE}  Org2 Identities (Private Sector)${NC}"
-echo -e "${BLUE}=======================================${NC}"
+echo "======================================="
+echo "  Org2 Identities (Private Sector)"
+echo "======================================="
 echo ""
 
 set_org2_ca_admin
@@ -149,59 +163,44 @@ register_and_enroll "ca-org2" "8054" "${ORG2_CA_CERT}" \
     "employer2" "employer2pw" "client" "${ORG2_PATH}" \
     "employer" "5" "Employer 2 (BuildersCo)"
 
-# 3. Employer 3 - Small Business
-register_and_enroll "ca-org2" "8054" "${ORG2_CA_CERT}" \
-    "employer3" "employer3pw" "client" "${ORG2_PATH}" \
-    "employer" "4" "Employer 3 (LocalShop)"
-
-# 4. Worker 1 - Registered Worker
+# 3. Worker 1 - Skilled Worker
 register_and_enroll "ca-org2" "8054" "${ORG2_CA_CERT}" \
     "worker1" "worker1pw" "client" "${ORG2_PATH}" \
-    "worker" "2" "Worker 1"
+    "worker" "2" "Worker 1 (Skilled)"
 
-# 5. Worker 2 - Registered Worker
+# 4. Worker 2 - Unskilled Worker
 register_and_enroll "ca-org2" "8054" "${ORG2_CA_CERT}" \
     "worker2" "worker2pw" "client" "${ORG2_PATH}" \
-    "worker" "2" "Worker 2"
+    "worker" "1" "Worker 2 (Unskilled)"
 
-# 6. Worker 3 - Registered Worker
-register_and_enroll "ca-org2" "8054" "${ORG2_CA_CERT}" \
-    "worker3" "worker3pw" "client" "${ORG2_PATH}" \
-    "worker" "1" "Worker 3"
-
-# 7. Employer Admin (Org2)
+# 5. System Admin (Org2)
 register_and_enroll "ca-org2" "8054" "${ORG2_CA_CERT}" \
     "sysadmin2" "sysadmin2pw" "admin" "${ORG2_PATH}" \
     "admin" "10" "System Admin (Org2)"
 
-# ============================================
-# SUMMARY
-# ============================================
+echo "======================================="
+echo "  ENROLLMENT COMPLETE"
+echo "======================================="
 echo ""
-echo -e "${BLUE}=======================================${NC}"
-echo -e "${BLUE}  ENROLLMENT SUMMARY${NC}"
-echo -e "${BLUE}=======================================${NC}"
+echo "Summary of enrolled identities:"
 echo ""
-echo -e "${GREEN}Org1 (Government) Identities:${NC}"
-echo "  1. govtofficial1 - Government Official (Senior, Level 9)"
-echo "  2. govtofficial2 - Government Official (Junior, Level 7)"
-echo "  3. auditor1      - Auditor (Senior, Level 7)"
-echo "  4. auditor2      - Auditor (Junior, Level 5)"
-echo "  5. bankofficer1  - Bank Officer (Level 6)"
-echo "  6. bankofficer2  - Bank Officer (Level 5)"
-echo "  7. sysadmin1     - System Admin (Level 10)"
+echo "Org1 (Government Sector):"
+echo "  - govtofficial1 (clearance: 9)"
+echo "  - govtofficial2 (clearance: 7)"
+echo "  - auditor1 (clearance: 7)"
+echo "  - auditor2 (clearance: 5)"
+echo "  - bankofficer1 (clearance: 6)"
+echo "  - bankofficer2 (clearance: 5)"
+echo "  - sysadmin1 (clearance: 10)"
 echo ""
-echo -e "${GREEN}Org2 (Private Sector) Identities:${NC}"
-echo "  1. employer1     - Employer/TechCorp (Level 6)"
-echo "  2. employer2     - Employer/BuildersCo (Level 5)"
-echo "  3. employer3     - Employer/LocalShop (Level 4)"
-echo "  4. worker1       - Worker (Level 2)"
-echo "  5. worker2       - Worker (Level 2)"
-echo "  6. worker3       - Worker (Level 1)"
-echo "  7. sysadmin2     - System Admin (Level 10)"
+echo "Org2 (Private Sector):"
+echo "  - employer1 (clearance: 6)"
+echo "  - employer2 (clearance: 5)"
+echo "  - worker1 (clearance: 2)"
+echo "  - worker2 (clearance: 1)"
+echo "  - sysadmin2 (clearance: 10)"
 echo ""
-echo -e "${GREEN}Total identities created: 14${NC}"
+echo "Next steps:"
+echo "  1. Run test-all-functions.sh to test chaincode with these identities"
+echo "  2. Use register-users.sh for custom user registration"
 echo ""
-echo -e "${BLUE}=======================================${NC}"
-echo -e "${BLUE}  IDENTITY ENROLLMENT COMPLETE!${NC}"
-echo -e "${BLUE}=======================================${NC}"

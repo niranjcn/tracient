@@ -42,27 +42,27 @@ NETWORK_ONLY=false
 SKIP_NETWORK=false
 
 print_banner() {
-    echo -e "${CYAN}╔════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}║      TRACIENT Blockchain Network Startup v2.0              ║${NC}"
-    echo -e "${CYAN}║      Income Traceability for Welfare Distribution          ║${NC}"
-    echo -e "${CYAN}╚════════════════════════════════════════════════════════════╝${NC}"
+    echo -e "${CYAN}============================================================${NC}"
+    echo -e "${CYAN}      TRACIENT Blockchain Network Startup v2.0              ${NC}"
+    echo -e "${CYAN}      Income Traceability for Welfare Distribution          ${NC}"
+    echo -e "${CYAN}============================================================${NC}"
     echo ""
 }
 
 print_status() {
-    echo -e "${GREEN}✓${NC} $1"
+    echo -e "${GREEN}[OK]${NC} $1"
 }
 
 print_warning() {
-    echo -e "${YELLOW}⚠${NC} $1"
+    echo -e "${YELLOW}[WARN]${NC} $1"
 }
 
 print_error() {
-    echo -e "${RED}✗${NC} $1"
+    echo -e "${RED}[ERROR]${NC} $1"
 }
 
 print_info() {
-    echo -e "${BLUE}ℹ${NC} $1"
+    echo -e "${BLUE}[INFO]${NC} $1"
 }
 
 show_help() {
@@ -149,14 +149,14 @@ if ! command -v go &> /dev/null; then
     print_error "Go not found. Please run: ./install-go.sh"
     exit 1
 fi
-print_status "Go found: $(go version | cut -d' ' -f3)"
+print_status "Go found: $(go version | awk '{print $3}')"
 
 # Validate chaincode exists
 if [ ! -f "${CHAINCODE_PATH}/chaincode.go" ]; then
     print_error "Chaincode not found at: ${CHAINCODE_PATH}"
     exit 1
 fi
-print_status "Chaincode found at: ${CHAINCODE_PATH}"
+print_status "Chaincode found"
 echo ""
 
 # Step 2: Navigate to network directory
@@ -209,7 +209,7 @@ export CORE_PEER_TLS_ROOTCERT_FILE="${SCRIPT_DIR}/network/test-network/organizat
 export CORE_PEER_MSPCONFIGPATH="${SCRIPT_DIR}/network/test-network/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp"
 export CORE_PEER_ADDRESS=localhost:7051
 
-echo "✓ TRACIENT environment configured for Org1"
+echo "[OK] TRACIENT environment configured for Org1"
 echo "  CORE_PEER_ADDRESS: $CORE_PEER_ADDRESS"
 echo "  CORE_PEER_LOCALMSPID: $CORE_PEER_LOCALMSPID"
 ENVEOF
@@ -257,15 +257,15 @@ if [ "$RUNNING_CONTAINERS" -lt 6 ]; then
     print_info "Some containers may still be starting..."
     sleep 5
 fi
-print_status "Containers running"
-docker ps --filter "name=peer0\|orderer\|ca" --format "  • {{.Names}} - {{.Status}}" | head -6
+
+docker ps --filter "name=peer0\|orderer\|ca" --format "  - {{.Names}} - {{.Status}}" | head -6
 echo ""
 
 # Exit if network-only mode
 if [ "$NETWORK_ONLY" = true ]; then
-    echo -e "${GREEN}════════════════════════════════════════════════════════════${NC}"
-    echo -e "${GREEN}✓ Network started successfully (without chaincode)${NC}"
-    echo -e "${GREEN}════════════════════════════════════════════════════════════${NC}"
+    echo -e "${GREEN}============================================================${NC}"
+    echo -e "${GREEN}[OK] Network started successfully (without chaincode)${NC}"
+    echo -e "${GREEN}============================================================${NC}"
     echo ""
     echo "Next: Deploy chaincode with:"
     echo "  ./deploy-chaincode.sh"
@@ -279,12 +279,11 @@ export CORE_PEER_LOCALMSPID="Org1MSP"
 export CORE_PEER_TLS_ROOTCERT_FILE="${NETWORK_DIR}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt"
 export CORE_PEER_MSPCONFIGPATH="${NETWORK_DIR}/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp"
 export CORE_PEER_ADDRESS=localhost:7051
-print_status "Peer environment configured for Org1"
+print_status "Peer environment configured"
 echo ""
 
 # Step 7: Deploy chaincode using network.sh
 echo -e "${YELLOW}[6/8]${NC} Deploying TRACIENT chaincode v${CHAINCODE_VERSION}..."
-print_info "This may take a few minutes..."
 
 # Get next sequence number if chaincode already committed
 COMMITTED=$(peer lifecycle chaincode querycommitted -C $CHANNEL_NAME -n $CHAINCODE_NAME 2>&1 || true)
@@ -346,27 +345,27 @@ export CORE_PEER_TLS_ROOTCERT_FILE="\${SCRIPT_DIR}/network/test-network/organiza
 export CORE_PEER_MSPCONFIGPATH="\${SCRIPT_DIR}/network/test-network/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp"
 export CORE_PEER_ADDRESS=localhost:7051
 
-echo "✓ TRACIENT environment configured for Org1"
+echo "[OK] TRACIENT environment configured for Org1"
 echo "  CORE_PEER_ADDRESS: \$CORE_PEER_ADDRESS"
 echo "  CORE_PEER_LOCALMSPID: \$CORE_PEER_LOCALMSPID"
 ENVEOF
 
 chmod +x "${SCRIPT_DIR}/set-env.sh"
-print_status "Environment script created: set-env.sh"
+print_status "Environment script created"
 echo ""
 
 # Final summary
-echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${GREEN}║      TRACIENT Blockchain Network Ready!                    ║${NC}"
-echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
+echo -e "${GREEN}============================================================${NC}"
+echo -e "${GREEN}      TRACIENT Blockchain Network Ready!                    ${NC}"
+echo -e "${GREEN}============================================================${NC}"
 echo ""
 echo -e "${CYAN}Network Information:${NC}"
-echo "  • Channel: $CHANNEL_NAME"
-echo "  • Chaincode: $CHAINCODE_NAME v$CHAINCODE_VERSION"
-echo "  • Organizations: Org1MSP, Org2MSP"
+echo "  - Channel: $CHANNEL_NAME"
+echo "  - Chaincode: $CHAINCODE_NAME v$CHAINCODE_VERSION"
+echo "  - Organizations: Org1MSP, Org2MSP"
 echo ""
 echo -e "${CYAN}Running Containers:${NC}"
-docker ps --filter "name=peer0\|orderer\|ca\|dev-peer" --format "  • {{.Names}}" | head -8
+docker ps --filter "name=peer0\|orderer\|ca\|dev-peer" --format "  - {{.Names}}" | head -8
 echo ""
 echo -e "${CYAN}Next Steps:${NC}"
 echo "  1. Source environment: source ./set-env.sh"
@@ -375,8 +374,8 @@ echo "  3. Quick queries:"
 echo "     peer chaincode query -C mychannel -n tracient -c '{\"function\":\"ReadWage\",\"Args\":[\"WAGE001\"]}'"
 echo ""
 echo -e "${CYAN}Available Scripts:${NC}"
-echo "  • ./restart-network.sh  - Restart without losing data"
-echo "  • ./fresh-start.sh      - Complete cleanup and restart"
-echo "  • ./deploy-chaincode.sh - Redeploy chaincode only"
-echo "  • ./test-chaincode.sh   - Test all 24 functions"
+echo "  - ./restart-network.sh  - Restart without losing data"
+echo "  - ./fresh-start.sh      - Complete cleanup and restart"
+echo "  - ./deploy-chaincode.sh - Redeploy chaincode only"
+echo "  - ./test-chaincode.sh   - Test all 24 functions"
 echo ""
