@@ -13,13 +13,17 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-FABRIC_SAMPLES_DIR="${SCRIPT_DIR}/../fabric-samples"
-TEST_NETWORK_DIR="${FABRIC_SAMPLES_DIR}/test-network"
+BLOCKCHAIN_DIR="${SCRIPT_DIR}/.."
+TEST_NETWORK_DIR="${BLOCKCHAIN_DIR}/network/test-network"
 CA_DIR="${TEST_NETWORK_DIR}/organizations"
+
+# Add Fabric binaries to PATH
+export PATH="${BLOCKCHAIN_DIR}/network/bin:${PATH}"
+export FABRIC_CFG_PATH="${TEST_NETWORK_DIR}/configtx"
 
 # Function to print colored output
 print_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
@@ -44,6 +48,23 @@ check_prerequisites() {
     print_success "Prerequisites check passed"
 }
 
+# Function to set CA environment for an org
+set_ca_env() {
+    local ORG=$1
+    
+    if [ "$ORG" == "org1" ]; then
+        CA_NAME="ca-org1"
+        CA_PORT="7054"
+        TLS_CERT="${CA_DIR}/fabric-ca/org1/ca-cert.pem"
+        export FABRIC_CA_CLIENT_HOME="${CA_DIR}/peerOrganizations/org1.example.com"
+    else
+        CA_NAME="ca-org2"
+        CA_PORT="8054"
+        TLS_CERT="${CA_DIR}/fabric-ca/org2/ca-cert.pem"
+        export FABRIC_CA_CLIENT_HOME="${CA_DIR}/peerOrganizations/org2.example.com"
+    fi
+}
+
 # Function to register a worker
 register_worker() {
     local USER_ID=$1
@@ -54,30 +75,19 @@ register_worker() {
     local ORG=$6
     
     print_info "Registering worker: $USER_ID"
-    
-    # Set CA URL based on org
-    if [ "$ORG" == "org1" ]; then
-        CA_NAME="ca-org1"
-        CA_PORT="7054"
-        MSP_DIR="${CA_DIR}/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp"
-    else
-        CA_NAME="ca-org2"
-        CA_PORT="8054"
-        MSP_DIR="${CA_DIR}/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp"
-    fi
-    
-    export FABRIC_CA_CLIENT_HOME="${CA_DIR}/${ORG}"
+    set_ca_env "$ORG"
     
     fabric-ca-client register \
         --caname ${CA_NAME} \
         --id.name "${USER_ID}" \
         --id.secret "${USER_ID}pw" \
-        --id.type user \
-        --id.affiliation "${ORG}.department1" \
+        --id.type client \
         --id.attrs "role=worker:ecert,clearanceLevel=1:ecert,department=${DEPARTMENT}:ecert,state=${STATE}:ecert,idHash=${ID_HASH}:ecert,canRecordWage=false:ecert,canRecordUPI=false:ecert,canRegisterUsers=false:ecert,canManageUsers=false:ecert,canUpdateThresholds=false:ecert,canFlagAnomaly=false:ecert,canReviewAnomaly=false:ecert,canGenerateReport=false:ecert,canBatchProcess=false:ecert" \
-        --tls.certfiles "${CA_DIR}/fabric-ca/${ORG}/tls-cert.pem" \
-        -u https://localhost:${CA_PORT} \
-        -M "${MSP_DIR}"
+        --tls.certfiles "${TLS_CERT}" \
+        -u https://localhost:${CA_PORT} || {
+            print_warning "User ${USER_ID} may already exist, skipping..."
+            return 0
+        }
     
     print_success "Worker ${USER_ID} registered successfully"
 }
@@ -93,29 +103,19 @@ register_employer() {
     local ORG=$7
     
     print_info "Registering employer: $USER_ID"
-    
-    if [ "$ORG" == "org1" ]; then
-        CA_NAME="ca-org1"
-        CA_PORT="7054"
-        MSP_DIR="${CA_DIR}/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp"
-    else
-        CA_NAME="ca-org2"
-        CA_PORT="8054"
-        MSP_DIR="${CA_DIR}/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp"
-    fi
-    
-    export FABRIC_CA_CLIENT_HOME="${CA_DIR}/${ORG}"
+    set_ca_env "$ORG"
     
     fabric-ca-client register \
         --caname ${CA_NAME} \
         --id.name "${USER_ID}" \
         --id.secret "${USER_ID}pw" \
-        --id.type user \
-        --id.affiliation "${ORG}" \
+        --id.type client \
         --id.attrs "role=employer:ecert,clearanceLevel=5:ecert,department=${DEPARTMENT}:ecert,state=${STATE}:ecert,idHash=${ID_HASH}:ecert,maxWageAmount=${MAX_WAGE_AMOUNT}:ecert,canRecordWage=true:ecert,canRecordUPI=true:ecert,canBatchProcess=true:ecert,canRegisterUsers=false:ecert,canManageUsers=false:ecert,canUpdateThresholds=false:ecert,canFlagAnomaly=false:ecert,canReviewAnomaly=false:ecert,canGenerateReport=false:ecert" \
-        --tls.certfiles "${CA_DIR}/fabric-ca/${ORG}/tls-cert.pem" \
-        -u https://localhost:${CA_PORT} \
-        -M "${MSP_DIR}"
+        --tls.certfiles "${TLS_CERT}" \
+        -u https://localhost:${CA_PORT} || {
+            print_warning "User ${USER_ID} may already exist, skipping..."
+            return 0
+        }
     
     print_success "Employer ${USER_ID} registered successfully"
 }
@@ -130,29 +130,19 @@ register_government_official() {
     local ORG=$6
     
     print_info "Registering government official: $USER_ID"
-    
-    if [ "$ORG" == "org1" ]; then
-        CA_NAME="ca-org1"
-        CA_PORT="7054"
-        MSP_DIR="${CA_DIR}/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp"
-    else
-        CA_NAME="ca-org2"
-        CA_PORT="8054"
-        MSP_DIR="${CA_DIR}/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp"
-    fi
-    
-    export FABRIC_CA_CLIENT_HOME="${CA_DIR}/${ORG}"
+    set_ca_env "$ORG"
     
     fabric-ca-client register \
         --caname ${CA_NAME} \
         --id.name "${USER_ID}" \
         --id.secret "${USER_ID}pw" \
-        --id.type user \
-        --id.affiliation "${ORG}.government" \
-        --id.attrs "role=government_official:ecert,clearanceLevel=10:ecert,department=${DEPARTMENT}:ecert,state=${STATE}:ecert,idHash=${ID_HASH}:ecert,canRecordWage=false:ecert,canRecordUPI=false:ecert,canBatchProcess=false:ecert,canRegisterUsers=true:ecert,canManageUsers=true:ecert,canUpdateThresholds=true:ecert,canFlagAnomaly=true:ecert,canReviewAnomaly=true:ecert,canGenerateReport=true:ecert,canReadAll=true:ecert,canExport=true:ecert" \
-        --tls.certfiles "${CA_DIR}/fabric-ca/${ORG}/tls-cert.pem" \
-        -u https://localhost:${CA_PORT} \
-        -M "${MSP_DIR}"
+        --id.type client \
+        --id.attrs "role=government_official:ecert,clearanceLevel=8:ecert,department=${DEPARTMENT}:ecert,state=${STATE}:ecert,idHash=${ID_HASH}:ecert,canRecordWage=false:ecert,canRecordUPI=false:ecert,canBatchProcess=false:ecert,canRegisterUsers=true:ecert,canManageUsers=true:ecert,canUpdateThresholds=true:ecert,canFlagAnomaly=true:ecert,canReviewAnomaly=true:ecert,canGenerateReport=true:ecert,canReadAll=true:ecert,canExport=true:ecert" \
+        --tls.certfiles "${TLS_CERT}" \
+        -u https://localhost:${CA_PORT} || {
+            print_warning "User ${USER_ID} may already exist, skipping..."
+            return 0
+        }
     
     print_success "Government official ${USER_ID} registered successfully"
 }
@@ -167,29 +157,19 @@ register_bank_officer() {
     local ORG=$6
     
     print_info "Registering bank officer: $USER_ID"
-    
-    if [ "$ORG" == "org1" ]; then
-        CA_NAME="ca-org1"
-        CA_PORT="7054"
-        MSP_DIR="${CA_DIR}/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp"
-    else
-        CA_NAME="ca-org2"
-        CA_PORT="8054"
-        MSP_DIR="${CA_DIR}/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp"
-    fi
-    
-    export FABRIC_CA_CLIENT_HOME="${CA_DIR}/${ORG}"
+    set_ca_env "$ORG"
     
     fabric-ca-client register \
         --caname ${CA_NAME} \
         --id.name "${USER_ID}" \
         --id.secret "${USER_ID}pw" \
-        --id.type user \
-        --id.affiliation "${ORG}.bank" \
+        --id.type client \
         --id.attrs "role=bank_officer:ecert,clearanceLevel=4:ecert,department=${BANK_NAME}:ecert,state=${STATE}:ecert,idHash=${ID_HASH}:ecert,canRecordWage=false:ecert,canRecordUPI=true:ecert,canBatchProcess=false:ecert,canRegisterUsers=false:ecert,canManageUsers=false:ecert,canUpdateThresholds=false:ecert,canFlagAnomaly=false:ecert,canReviewAnomaly=false:ecert,canGenerateReport=false:ecert" \
-        --tls.certfiles "${CA_DIR}/fabric-ca/${ORG}/tls-cert.pem" \
-        -u https://localhost:${CA_PORT} \
-        -M "${MSP_DIR}"
+        --tls.certfiles "${TLS_CERT}" \
+        -u https://localhost:${CA_PORT} || {
+            print_warning "User ${USER_ID} may already exist, skipping..."
+            return 0
+        }
     
     print_success "Bank officer ${USER_ID} registered successfully"
 }
@@ -202,29 +182,19 @@ register_auditor() {
     local ORG=$4
     
     print_info "Registering auditor: $USER_ID"
-    
-    if [ "$ORG" == "org1" ]; then
-        CA_NAME="ca-org1"
-        CA_PORT="7054"
-        MSP_DIR="${CA_DIR}/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp"
-    else
-        CA_NAME="ca-org2"
-        CA_PORT="8054"
-        MSP_DIR="${CA_DIR}/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp"
-    fi
-    
-    export FABRIC_CA_CLIENT_HOME="${CA_DIR}/${ORG}"
+    set_ca_env "$ORG"
     
     fabric-ca-client register \
         --caname ${CA_NAME} \
         --id.name "${USER_ID}" \
         --id.secret "${USER_ID}pw" \
-        --id.type user \
-        --id.affiliation "${ORG}.audit" \
-        --id.attrs "role=auditor:ecert,clearanceLevel=8:ecert,idHash=${ID_HASH}:ecert,canRecordWage=false:ecert,canRecordUPI=false:ecert,canBatchProcess=false:ecert,canRegisterUsers=false:ecert,canManageUsers=false:ecert,canUpdateThresholds=false:ecert,canFlagAnomaly=true:ecert,canReviewAnomaly=true:ecert,canGenerateReport=true:ecert,canReadAll=true:ecert" \
-        --tls.certfiles "${CA_DIR}/fabric-ca/${ORG}/tls-cert.pem" \
-        -u https://localhost:${CA_PORT} \
-        -M "${MSP_DIR}"
+        --id.type client \
+        --id.attrs "role=auditor:ecert,clearanceLevel=7:ecert,idHash=${ID_HASH}:ecert,canRecordWage=false:ecert,canRecordUPI=false:ecert,canBatchProcess=false:ecert,canRegisterUsers=false:ecert,canManageUsers=false:ecert,canUpdateThresholds=false:ecert,canFlagAnomaly=true:ecert,canReviewAnomaly=true:ecert,canGenerateReport=true:ecert,canReadAll=true:ecert" \
+        --tls.certfiles "${TLS_CERT}" \
+        -u https://localhost:${CA_PORT} || {
+            print_warning "User ${USER_ID} may already exist, skipping..."
+            return 0
+        }
     
     print_success "Auditor ${USER_ID} registered successfully"
 }
@@ -237,29 +207,19 @@ register_admin() {
     local ORG=$4
     
     print_info "Registering admin: $USER_ID"
-    
-    if [ "$ORG" == "org1" ]; then
-        CA_NAME="ca-org1"
-        CA_PORT="7054"
-        MSP_DIR="${CA_DIR}/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp"
-    else
-        CA_NAME="ca-org2"
-        CA_PORT="8054"
-        MSP_DIR="${CA_DIR}/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp"
-    fi
-    
-    export FABRIC_CA_CLIENT_HOME="${CA_DIR}/${ORG}"
+    set_ca_env "$ORG"
     
     fabric-ca-client register \
         --caname ${CA_NAME} \
         --id.name "${USER_ID}" \
         --id.secret "${USER_ID}pw" \
         --id.type admin \
-        --id.affiliation "${ORG}" \
         --id.attrs "role=admin:ecert,clearanceLevel=10:ecert,idHash=${ID_HASH}:ecert,canRecordWage=true:ecert,canRecordUPI=true:ecert,canBatchProcess=true:ecert,canRegisterUsers=true:ecert,canManageUsers=true:ecert,canUpdateThresholds=true:ecert,canFlagAnomaly=true:ecert,canReviewAnomaly=true:ecert,canGenerateReport=true:ecert,canReadAll=true:ecert,canExport=true:ecert" \
-        --tls.certfiles "${CA_DIR}/fabric-ca/${ORG}/tls-cert.pem" \
-        -u https://localhost:${CA_PORT} \
-        -M "${MSP_DIR}"
+        --tls.certfiles "${TLS_CERT}" \
+        -u https://localhost:${CA_PORT} || {
+            print_warning "User ${USER_ID} may already exist, skipping..."
+            return 0
+        }
     
     print_success "Admin ${USER_ID} registered successfully"
 }
@@ -271,14 +231,7 @@ enroll_user() {
     local OUTPUT_DIR=$3
     
     print_info "Enrolling user: $USER_ID"
-    
-    if [ "$ORG" == "org1" ]; then
-        CA_NAME="ca-org1"
-        CA_PORT="7054"
-    else
-        CA_NAME="ca-org2"
-        CA_PORT="8054"
-    fi
+    set_ca_env "$ORG"
     
     mkdir -p "${OUTPUT_DIR}/${USER_ID}"
     
@@ -288,7 +241,8 @@ enroll_user() {
         -u https://${USER_ID}:${USER_ID}pw@localhost:${CA_PORT} \
         --caname ${CA_NAME} \
         -M msp \
-        --tls.certfiles "${CA_DIR}/fabric-ca/${ORG}/tls-cert.pem"
+        --enrollment.attrs "role,clearanceLevel,department,state,idHash,canRecordWage,canRecordUPI,canBatchProcess,canRegisterUsers,canManageUsers,canUpdateThresholds,canFlagAnomaly,canReviewAnomaly,canGenerateReport,canReadAll,canExport" \
+        --tls.certfiles "${TLS_CERT}"
     
     print_success "User ${USER_ID} enrolled successfully"
     print_info "Certificate location: ${OUTPUT_DIR}/${USER_ID}/msp"
@@ -325,7 +279,7 @@ show_usage() {
     echo "      Enroll a registered user and get their certificate"
     echo ""
     echo "  register-sample-users"
-    echo "      Register a set of sample users for testing"
+    echo "      Register a set of sample users for testing (6 identities)"
     echo ""
     echo "Examples:"
     echo "  $0 register-worker worker001 \"John Doe\" abc123hash construction Karnataka org1"
@@ -335,47 +289,70 @@ show_usage() {
     echo ""
 }
 
-# Function to register sample users for testing
+# Function to register sample users for testing - 6 identities
 register_sample_users() {
-    print_info "Registering sample users for testing..."
-    
-    # Workers
-    register_worker "worker001" "Ravi Kumar" "wkr001hash" "construction" "Karnataka" "org1"
-    register_worker "worker002" "Priya Sharma" "wkr002hash" "agriculture" "Maharashtra" "org1"
-    register_worker "worker003" "Mohammed Ali" "wkr003hash" "manufacturing" "Tamil Nadu" "org2"
-    
-    # Employers
-    register_employer "employer001" "ABC Construction" "emp001hash" "construction" "Karnataka" "500000" "org1"
-    register_employer "employer002" "XYZ Manufacturing" "emp002hash" "manufacturing" "Maharashtra" "1000000" "org2"
-    
-    # Government Officials
-    register_government_official "govofficial001" "Dr. Lakshmi Nair" "gov001hash" "welfare" "Karnataka" "org1"
-    register_government_official "govofficial002" "Rajesh Gupta" "gov002hash" "labor" "Maharashtra" "org1"
-    
-    # Bank Officers
-    register_bank_officer "bankofficer001" "Suresh Patel" "bnk001hash" "SBI" "Karnataka" "org1"
-    
-    # Auditors
-    register_auditor "auditor001" "Anita Desai" "aud001hash" "org1"
-    
-    # Admins
-    register_admin "admin001" "System Admin" "adm001hash" "org1"
-    
-    print_success "All sample users registered successfully!"
+    print_info "=============================================="
+    print_info "  Registering 6 Sample Users for Testing"
+    print_info "=============================================="
     echo ""
-    echo "Registered users:"
-    echo "  - 3 Workers (worker001-003)"
-    echo "  - 2 Employers (employer001-002)"
-    echo "  - 2 Government Officials (govofficial001-002)"
-    echo "  - 1 Bank Officer (bankofficer001)"
-    echo "  - 1 Auditor (auditor001)"
-    echo "  - 1 Admin (admin001)"
+    
+    # 1. Worker (Org2 - workers/employers typically in Org2)
+    print_info "1/6 - Registering Worker..."
+    register_worker "testworker" "Test Worker" "wkr001hash" "construction" "Karnataka" "org2"
+    
+    # 2. Employer (Org2 - records wages)
+    print_info "2/6 - Registering Employer..."
+    register_employer "testemployer" "Test Employer Corp" "emp001hash" "manufacturing" "Maharashtra" "500000" "org2"
+    
+    # 3. Government Official (Org1 - government entities)
+    print_info "3/6 - Registering Government Official..."
+    register_government_official "testgovofficial" "Test Govt Officer" "gov001hash" "welfare" "Delhi" "org1"
+    
+    # 4. Bank Officer (Org1 - financial entities)
+    print_info "4/6 - Registering Bank Officer..."
+    register_bank_officer "testbankofficer" "Test Bank Officer" "bnk001hash" "SBI" "Karnataka" "org1"
+    
+    # 5. Auditor (Org1 - oversight)
+    print_info "5/6 - Registering Auditor..."
+    register_auditor "testauditor" "Test Auditor" "aud001hash" "org1"
+    
+    # 6. Admin (Org1 - system administration)
+    print_info "6/6 - Registering Admin..."
+    register_admin "testadmin" "Test System Admin" "adm001hash" "org1"
+    
     echo ""
-    echo "Password pattern: <user_id>pw (e.g., worker001pw)"
+    print_success "=============================================="
+    print_success "  All 6 Sample Users Registered Successfully!"
+    print_success "=============================================="
+    echo ""
+    echo "Registered Identities:"
+    echo "+----------------------+----------------------+-------------------+---------+"
+    echo "| User ID              | Role                 | Clearance Level   | Org     |"
+    echo "+----------------------+----------------------+-------------------+---------+"
+    echo "| testworker           | worker               | 1                 | org2    |"
+    echo "| testemployer         | employer             | 5                 | org2    |"
+    echo "| testgovofficial      | government_official  | 8                 | org1    |"
+    echo "| testbankofficer      | bank_officer         | 4                 | org1    |"
+    echo "| testauditor          | auditor              | 7                 | org1    |"
+    echo "| testadmin            | admin                | 10                | org1    |"
+    echo "+----------------------+----------------------+-------------------+---------+"
+    echo ""
+    echo "Password pattern: <user_id>pw (e.g., testworkerpw, testemployerpw)"
+    echo ""
+    echo "Next steps:"
+    echo "  1. Enroll users:  ./register-users.sh enroll testworker org2 ./users"
+    echo "  2. Test functions: ./test-all-functions.sh"
+    echo ""
 }
 
 # Main script
 main() {
+    # If no arguments, show usage
+    if [ $# -eq 0 ]; then
+        show_usage
+        exit 0
+    fi
+    
     case "$1" in
         register-worker)
             if [ $# -lt 7 ]; then

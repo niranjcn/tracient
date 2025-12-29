@@ -52,7 +52,7 @@ enroll_with_attrs() {
         cp "${org_path}/msp/config.yaml" "${org_path}/users/${username}/msp/config.yaml"
     fi
     
-    echo -e "${GREEN}✓ ${display_name} enrolled with role=${role}, clearanceLevel=${clearance}${NC}"
+    echo -e "${GREEN}ÃƒÂ¢Ã…â€œÃ¢â‚¬Å“ ${display_name} enrolled with role=${role}, clearanceLevel=${clearance}${NC}"
 }
 
 # ============================================

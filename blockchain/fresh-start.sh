@@ -24,20 +24,21 @@ NC='\033[0m'
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 NETWORK_DIR="${SCRIPT_DIR}/network/test-network"
 
-print_status() { echo -e "${GREEN}✓${NC} $1"; }
-print_warning() { echo -e "${YELLOW}⚠${NC} $1"; }
-print_error() { echo -e "${RED}✗${NC} $1"; }
-print_info() { echo -e "${BLUE}ℹ${NC} $1"; }
+print_status() { echo -e "${GREEN}[OK]${NC} $1"; }
+print_warning() { echo -e "${YELLOW}[WARN]${NC} $1"; }
+print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+print_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
 
-echo -e "${CYAN}╔════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${CYAN}║      TRACIENT Fresh Start (Complete Cleanup)               ║${NC}"
-echo -e "${CYAN}╚════════════════════════════════════════════════════════════╝${NC}"
+echo -e "${CYAN}============================================================${NC}"
+echo -e "${CYAN}      TRACIENT Fresh Start (Complete Cleanup)               ${NC}"
+echo -e "${CYAN}============================================================${NC}"
 echo ""
-echo -e "${RED}⚠️  WARNING: This will DELETE ALL BLOCKCHAIN DATA!${NC}"
+echo -e "${RED}WARNING: This will DELETE ALL BLOCKCHAIN DATA!${NC}"
 echo ""
 
 # Parse arguments
 CLEANUP_ONLY=false
+AUTO_CONFIRM=false
 for arg in "$@"; do
     case $arg in
         --cleanup|-c)
@@ -84,9 +85,9 @@ docker volume prune -f 2>/dev/null || true
 print_status "Docker volumes pruned"
 
 echo ""
-echo -e "${GREEN}════════════════════════════════════════════════════════════${NC}"
-echo -e "${GREEN}✓ Complete Cleanup Done${NC}"
-echo -e "${GREEN}════════════════════════════════════════════════════════════${NC}"
+echo -e "${GREEN}============================================================${NC}"
+echo -e "${GREEN}[OK] Complete Cleanup Done${NC}"
+echo -e "${GREEN}============================================================${NC}"
 echo ""
 
 if [ "$CLEANUP_ONLY" = true ]; then

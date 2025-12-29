@@ -24,14 +24,14 @@ NC='\033[0m'
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 NETWORK_DIR="${SCRIPT_DIR}/network/test-network"
 
-print_status() { echo -e "${GREEN}✓${NC} $1"; }
-print_warning() { echo -e "${YELLOW}⚠${NC} $1"; }
-print_error() { echo -e "${RED}✗${NC} $1"; }
-print_info() { echo -e "${BLUE}ℹ${NC} $1"; }
+print_status() { echo -e "${GREEN}[OK]${NC} $1"; }
+print_warning() { echo -e "${YELLOW}[WARN]${NC} $1"; }
+print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+print_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
 
-echo -e "${CYAN}╔════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${CYAN}║      TRACIENT Network Restart (Data Preserved)             ║${NC}"
-echo -e "${CYAN}╚════════════════════════════════════════════════════════════╝${NC}"
+echo -e "${CYAN}============================================================${NC}"
+echo -e "${CYAN}      TRACIENT Network Restart (Data Preserved)             ${NC}"
+echo -e "${CYAN}============================================================${NC}"
 echo ""
 
 # Parse arguments
@@ -59,7 +59,7 @@ if [ "$RUNNING" -gt 0 ] && [ "$FORCE_RESTART" = false ]; then
     print_info "Network is already running"
     echo ""
     echo "Running containers:"
-    docker ps --filter "name=peer0\|orderer\|ca" --format "  • {{.Names}} - {{.Status}}" | head -6
+    docker ps --filter "name=peer0\|orderer\|ca" --format "  - {{.Names}} - {{.Status}}" | head -6
     echo ""
     print_info "Use --force to restart anyway"
     print_info "Or use ./test-chaincode.sh to test functions"
@@ -99,52 +99,25 @@ if ! peer channel list &> /dev/null; then
     sleep 10
 fi
 
-INSTALLED=$(peer lifecycle chaincode queryinstalled 2>&1 || true)
-
-if echo "$INSTALLED" | grep -q "tracient"; then
-    print_status "Chaincode is installed and ready"
-    
-    # Verify chaincode is committed
-    COMMITTED=$(peer lifecycle chaincode querycommitted -C mychannel -n tracient 2>&1 || true)
-    if echo "$COMMITTED" | grep -q "Version:"; then
-        VERSION=$(echo "$COMMITTED" | grep "Version:" | awk '{print $2}' | tr -d ',')
-        print_status "Chaincode committed (version: $VERSION)"
-    fi
+# Check if chaincode is committed
+COMMITTED=$(peer lifecycle chaincode querycommitted -C mychannel -n tracient 2>&1 || true)
+if echo "$COMMITTED" | grep -q "Version:"; then
+    print_status "Chaincode verified: tracient"
+    echo "$COMMITTED" | grep "Version:\|Sequence:" | head -2
 else
-    print_warning "Chaincode not found. Redeploying..."
-    
-    # Run deploy script
-    if [ -f "${SCRIPT_DIR}/deploy-chaincode.sh" ]; then
-        bash "${SCRIPT_DIR}/deploy-chaincode.sh"
-    else
-        print_error "deploy-chaincode.sh not found"
-        print_info "Run: ./start-network.sh to deploy chaincode"
-        exit 1
-    fi
+    print_warning "Chaincode not found - may need to redeploy"
+    print_info "Run ./deploy-chaincode.sh to deploy chaincode"
 fi
 
 echo ""
-
-# Test a simple query
-echo "Testing chaincode..."
-RESULT=$(peer chaincode query -C mychannel -n tracient -c '{"function":"WageExists","Args":["WAGE001"]}' 2>&1 || true)
-if echo "$RESULT" | grep -q "true\|false"; then
-    print_status "Chaincode responding correctly"
-else
-    print_warning "Chaincode query returned unexpected result"
-    print_info "Result: $RESULT"
-fi
-
-echo ""
-echo -e "${GREEN}════════════════════════════════════════════════════════════${NC}"
-echo -e "${GREEN}✓ TRACIENT Network Restarted Successfully${NC}"
-echo -e "${GREEN}════════════════════════════════════════════════════════════${NC}"
+echo -e "${GREEN}============================================================${NC}"
+echo -e "${GREEN}[OK] Network Restart Complete${NC}"
+echo -e "${GREEN}============================================================${NC}"
 echo ""
 echo "Running containers:"
-docker ps --filter "name=peer0\|orderer\|ca\|dev-peer" --format "  • {{.Names}} - {{.Status}}" | head -8
+docker ps --filter "name=peer0\|orderer\|ca" --format "  - {{.Names}} - {{.Status}}" | head -6
 echo ""
 echo "Next steps:"
-echo "  • source ./set-env.sh           # Set environment variables"
-echo "  • ./test-chaincode.sh           # Test all functions"
-echo "  • peer chaincode query -C mychannel -n tracient -c '{\"function\":\"ReadWage\",\"Args\":[\"WAGE001\"]}'"
+echo "  - Test chaincode: ./test-chaincode.sh"
+echo "  - Quick test: ./quick-test.sh"
 echo ""
