@@ -117,4 +117,16 @@ router.get(
   familyController.getEligibleFamilies
 );
 
+/**
+ * @route POST /api/family/reclassify
+ * @desc Reclassify current user's family using AI model
+ * @access Private (Worker, Employer)
+ */
+router.post(
+  '/reclassify',
+  authenticate,
+  authorize(ROLES.WORKER, ROLES.EMPLOYER),
+  familyController.reclassifyFamily
+);
+
 export default router;

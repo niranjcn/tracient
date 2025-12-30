@@ -1,5 +1,5 @@
 import api from './api';
-import { Family, FamilySurveyData, FamilyMember } from '@/types/family';
+import { Family, FamilySurveyData, FamilyMember, SurveySubmitResponse, ClassificationResult } from '@/types/family';
 
 export const familyService = {
   // Get family by ration number
@@ -14,9 +14,10 @@ export const familyService = {
     return response.data || response;
   },
 
-  // Submit family survey
-  async submitSurvey(data: FamilySurveyData): Promise<Family> {
-    return api.post('/family/survey', data);
+  // Submit family survey - returns family data with classification result
+  async submitSurvey(data: FamilySurveyData): Promise<SurveySubmitResponse> {
+    const response: any = await api.post('/family/survey', data);
+    return response;
   },
 
   // Get family details by ration number
@@ -32,6 +33,12 @@ export const familyService = {
   // Get all family members by ration number
   async getFamilyMembers(ration_no: number): Promise<FamilyMember[]> {
     return api.get(`/family/ration/${ration_no}/members`);
+  },
+
+  // Reclassify existing family
+  async reclassifyFamily(): Promise<SurveySubmitResponse> {
+    const response: any = await api.post('/family/reclassify');
+    return response;
   },
 };
 

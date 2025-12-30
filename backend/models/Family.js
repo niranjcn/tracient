@@ -257,6 +257,95 @@ const familySchema = new mongoose.Schema({
     required: true,
     enum: [0, 1],
     default: 0
+  },
+
+  // APL/BPL Classification Results (from AI model)
+  classification: {
+    type: String,
+    enum: ['APL', 'BPL', 'pending'],
+    default: 'pending'
+  },
+  classification_confidence: {
+    type: Number,
+    min: 0,
+    max: 100,
+    default: 0
+  },
+  classification_reason: {
+    type: String,
+    default: ''
+  },
+  
+  // ML Model Results
+  ml_classification: {
+    type: String,
+    enum: ['APL', 'BPL', null],
+    default: null
+  },
+  ml_bpl_probability: {
+    type: Number,
+    min: 0,
+    max: 100,
+    default: 0
+  },
+  ml_apl_probability: {
+    type: Number,
+    min: 0,
+    max: 100,
+    default: 0
+  },
+  
+  // SECC Analysis Results
+  secc_classification: {
+    type: String,
+    enum: ['APL', 'BPL', null],
+    default: null
+  },
+  secc_reason: {
+    type: String,
+    default: ''
+  },
+  secc_has_exclusion: {
+    type: Boolean,
+    default: false
+  },
+  secc_has_inclusion: {
+    type: Boolean,
+    default: false
+  },
+  secc_deprivation_count: {
+    type: Number,
+    min: 0,
+    default: 0
+  },
+  secc_exclusion_met: [{
+    type: String
+  }],
+  secc_inclusion_met: [{
+    type: String
+  }],
+  secc_deprivation_met: [{
+    type: String
+  }],
+  
+  // Recommendation
+  recommendation_priority: {
+    type: String,
+    enum: ['HIGH', 'MEDIUM', 'LOW', null],
+    default: null
+  },
+  recommendation_message: {
+    type: String,
+    default: ''
+  },
+  eligible_schemes: [{
+    type: String
+  }],
+  
+  // Classification metadata
+  classified_at: {
+    type: Date,
+    default: null
   }
 }, {
   timestamps: true,

@@ -1,5 +1,6 @@
 import { Family, User } from '../models/index.js';
 import { logger } from '../utils/logger.util.js';
+import { classifyHousehold } from '../services/ai.service.js';
 
 export const familyController = {
   // Get current user's family information
@@ -102,19 +103,71 @@ export const familyController = {
         });
       }
 
-      // Create new family record with user's ration number
-      const family = new Family({
+      // Run APL/BPL classification using AI model
+      logger.info(`Running APL/BPL classification for ration number: ${user.ration_no}`);
+      let classificationResult = null;
+      
+      try {
+        classificationResult = await classifyHousehold(surveyData);
+        logger.info(`Classification result: ${classificationResult?.classification}`);
+      } catch (classifyError) {
+        logger.error('Classification failed:', classifyError.message);
+        // Continue without classification - will be marked as pending
+      }
+
+      // Prepare family data with classification results
+      const familyData = {
         ...surveyData,
-        ration_no: user.ration_no // Use user's ration number
-      });
+        ration_no: user.ration_no
+      };
+
+      // Add classification results if available
+      if (classificationResult && classificationResult.success) {
+        familyData.classification = classificationResult.classification;
+        familyData.classification_reason = classificationResult.reason;
+        familyData.classified_at = new Date();
+        
+        // ML prediction results
+        if (classificationResult.ml_prediction) {
+          familyData.ml_classification = classificationResult.ml_prediction.classification;
+          familyData.classification_confidence = classificationResult.ml_prediction.confidence;
+          familyData.ml_bpl_probability = classificationResult.ml_prediction.bpl_probability;
+          familyData.ml_apl_probability = classificationResult.ml_prediction.apl_probability;
+        }
+        
+        // SECC analysis results
+        if (classificationResult.secc_analysis) {
+          familyData.secc_classification = classificationResult.secc_analysis.secc_classification;
+          familyData.secc_reason = classificationResult.secc_analysis.secc_reason;
+          familyData.secc_has_exclusion = classificationResult.secc_analysis.has_exclusion;
+          familyData.secc_has_inclusion = classificationResult.secc_analysis.has_inclusion;
+          familyData.secc_deprivation_count = classificationResult.secc_analysis.deprivation_count;
+          familyData.secc_exclusion_met = classificationResult.secc_analysis.exclusion_met || [];
+          familyData.secc_inclusion_met = classificationResult.secc_analysis.inclusion_met || [];
+          familyData.secc_deprivation_met = classificationResult.secc_analysis.deprivation_met || [];
+        }
+        
+        // Recommendation
+        if (classificationResult.recommendation) {
+          familyData.recommendation_priority = classificationResult.recommendation.priority;
+          familyData.recommendation_message = classificationResult.recommendation.message;
+          familyData.eligible_schemes = classificationResult.recommendation.eligible_schemes || [];
+        }
+      }
+
+      // Create new family record
+      const family = new Family(familyData);
       await family.save();
 
-      logger.info(`Family survey submitted for ration number: ${surveyData.ration_no}`);
+      logger.info(`Family survey submitted for ration number: ${user.ration_no} - Classification: ${familyData.classification}`);
 
       res.status(201).json({
         success: true,
         message: 'Family survey submitted successfully',
-        data: family
+        data: {
+          family,
+          classification: classificationResult
+        }
       });
     } catch (error) {
       if (error.code === 11000) {
@@ -283,6 +336,106 @@ export const familyController = {
       });
     } catch (error) {
       logger.error('Error fetching eligible families:', error);
+      next(error);
+    }
+  },
+
+  // Reclassify an existing family
+  async reclassifyFamily(req, res, next) {
+    try {
+      const userId = req.user.id;
+
+      // Get user's ration number
+      const user = await User.findById(userId);
+      
+      if (!user || !user.ration_no) {
+        return res.status(400).json({
+          success: false,
+          message: 'User does not have a ration number assigned'
+        });
+      }
+
+      // Find existing family
+      const family = await Family.findOne({ ration_no: user.ration_no });
+      
+      if (!family) {
+        return res.status(404).json({
+          success: false,
+          message: 'Family survey not found. Please complete the survey first.'
+        });
+      }
+
+      // Prepare survey data from existing family record
+      const surveyData = family.toObject();
+      
+      // Run APL/BPL classification
+      logger.info(`Reclassifying family with ration number: ${user.ration_no}`);
+      let classificationResult = null;
+      
+      try {
+        classificationResult = await classifyHousehold(surveyData);
+        logger.info(`Reclassification result: ${classificationResult?.classification}`);
+      } catch (classifyError) {
+        logger.error('Reclassification failed:', classifyError.message);
+        return res.status(500).json({
+          success: false,
+          message: 'Classification service unavailable. Please try again later.'
+        });
+      }
+
+      // Update family with new classification results
+      if (classificationResult && classificationResult.success) {
+        family.classification = classificationResult.classification;
+        family.classification_reason = classificationResult.reason;
+        family.classified_at = new Date();
+        
+        // ML prediction results
+        if (classificationResult.ml_prediction) {
+          family.ml_classification = classificationResult.ml_prediction.classification;
+          family.classification_confidence = classificationResult.ml_prediction.confidence;
+          family.ml_bpl_probability = classificationResult.ml_prediction.bpl_probability;
+          family.ml_apl_probability = classificationResult.ml_prediction.apl_probability;
+        }
+        
+        // SECC analysis results
+        if (classificationResult.secc_analysis) {
+          family.secc_classification = classificationResult.secc_analysis.secc_classification;
+          family.secc_reason = classificationResult.secc_analysis.secc_reason;
+          family.secc_has_exclusion = classificationResult.secc_analysis.has_exclusion;
+          family.secc_has_inclusion = classificationResult.secc_analysis.has_inclusion;
+          family.secc_deprivation_count = classificationResult.secc_analysis.deprivation_count;
+          family.secc_exclusion_met = classificationResult.secc_analysis.exclusion_met || [];
+          family.secc_inclusion_met = classificationResult.secc_analysis.inclusion_met || [];
+          family.secc_deprivation_met = classificationResult.secc_analysis.deprivation_met || [];
+        }
+        
+        // Recommendation
+        if (classificationResult.recommendation) {
+          family.recommendation_priority = classificationResult.recommendation.priority;
+          family.recommendation_message = classificationResult.recommendation.message;
+          family.eligible_schemes = classificationResult.recommendation.eligible_schemes || [];
+        }
+
+        await family.save();
+
+        logger.info(`Family reclassified successfully: ${user.ration_no} - ${family.classification}`);
+
+        res.json({
+          success: true,
+          message: 'Family classification updated successfully',
+          data: {
+            family,
+            classification: classificationResult
+          }
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          message: 'Classification failed. Please try again.'
+        });
+      }
+    } catch (error) {
+      logger.error('Error reclassifying family:', error);
       next(error);
     }
   }

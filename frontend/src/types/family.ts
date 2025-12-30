@@ -59,12 +59,80 @@ export interface Family {
   has_toilet: 0 | 1;
   is_houseless: 0 | 1;
   
+  // APL/BPL Classification Results
+  classification: 'APL' | 'BPL' | 'pending';
+  classification_confidence: number;
+  classification_reason: string;
+  
+  // ML Model Results
+  ml_classification: 'APL' | 'BPL' | null;
+  ml_bpl_probability: number;
+  ml_apl_probability: number;
+  
+  // SECC Analysis Results
+  secc_classification: 'APL' | 'BPL' | null;
+  secc_reason: string;
+  secc_has_exclusion: boolean;
+  secc_has_inclusion: boolean;
+  secc_deprivation_count: number;
+  secc_exclusion_met: string[];
+  secc_inclusion_met: string[];
+  secc_deprivation_met: string[];
+  
+  // Recommendation
+  recommendation_priority: 'HIGH' | 'MEDIUM' | 'LOW' | null;
+  recommendation_message: string;
+  eligible_schemes: string[];
+  
+  // Classification metadata
+  classified_at: string | null;
+  
   // Metadata
   createdAt: string;
   updatedAt: string;
 }
 
-export interface FamilySurveyData extends Omit<Family, '_id' | 'createdAt' | 'updatedAt'> {}
+// Classification response from API
+export interface ClassificationResult {
+  success: boolean;
+  classification: 'APL' | 'BPL';
+  reason: string;
+  ml_prediction: {
+    classification: 'APL' | 'BPL';
+    confidence: number;
+    bpl_probability: number;
+    apl_probability: number;
+  } | null;
+  secc_analysis: {
+    secc_classification: 'APL' | 'BPL';
+    secc_reason: string;
+    has_exclusion: boolean;
+    has_inclusion: boolean;
+    deprivation_count: number;
+    exclusion_met: string[];
+    inclusion_met: string[];
+    deprivation_met: string[];
+  };
+  recommendation: {
+    priority: 'HIGH' | 'MEDIUM' | 'LOW';
+    message: string;
+    eligible_schemes: string[];
+    deprivation_indicators: string[];
+    exclusion_indicators: string[];
+  };
+}
+
+// Survey submission response
+export interface SurveySubmitResponse {
+  success: boolean;
+  message: string;
+  data: {
+    family: Family;
+    classification: ClassificationResult | null;
+  };
+}
+
+export interface FamilySurveyData extends Omit<Family, '_id' | 'createdAt' | 'updatedAt' | 'classification' | 'classification_confidence' | 'classification_reason' | 'ml_classification' | 'ml_bpl_probability' | 'ml_apl_probability' | 'secc_classification' | 'secc_reason' | 'secc_has_exclusion' | 'secc_has_inclusion' | 'secc_deprivation_count' | 'secc_exclusion_met' | 'secc_inclusion_met' | 'secc_deprivation_met' | 'recommendation_priority' | 'recommendation_message' | 'eligible_schemes' | 'classified_at'> {}
 
 export interface FamilyMember {
   id: string;
