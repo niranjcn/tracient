@@ -2,6 +2,13 @@
 export const APP_NAME = 'Tracient';
 export const APP_VERSION = '2.0.0';
 
+// AI Model API Configuration
+export const AI_CONFIG = {
+  API_URL: process.env.AI_API_URL || 'http://localhost:5001',
+  TIMEOUT: parseInt(process.env.AI_API_TIMEOUT) || 30000,
+  ENABLED: process.env.AI_ENABLED !== 'false'
+};
+
 // User roles
 export const ROLES = {
   ADMIN: 'admin',

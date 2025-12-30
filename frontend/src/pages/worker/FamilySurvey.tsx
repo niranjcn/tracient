@@ -12,8 +12,9 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, Button, Spinner } from '@/components/common';
+import ClassificationResultModal from '@/components/family/ClassificationResultModal';
 import { familyService } from '@/services';
-import { FamilySurveyData } from '@/types/family';
+import { FamilySurveyData, ClassificationResult, SurveySubmitResponse } from '@/types/family';
 import { useAuth } from '@/hooks/useAuth';
 
 interface FormErrors {
@@ -27,6 +28,8 @@ const FamilySurvey: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCheckingStatus, setIsCheckingStatus] = useState(true);
   const [errors, setErrors] = useState<FormErrors>({});
+  const [showClassificationResult, setShowClassificationResult] = useState(false);
+  const [classificationResult, setClassificationResult] = useState<ClassificationResult | null>(null);
   
   // Check if survey already exists
   React.useEffect(() => {
@@ -151,13 +154,31 @@ const FamilySurvey: React.FC = () => {
     
     setIsSubmitting(true);
     try {
-      await familyService.submitSurvey(formData);
-      navigate(user?.role === 'worker' ? '/worker/family' : '/employer/family');
+      const response: SurveySubmitResponse = await familyService.submitSurvey(formData);
+      
+      // Check if classification result is available
+      if (response.data?.classification) {
+        setClassificationResult(response.data.classification);
+        setShowClassificationResult(true);
+      } else {
+        // No classification result, navigate directly
+        navigate(user?.role === 'worker' ? '/worker/family' : '/employer/family');
+      }
     } catch (error) {
       setErrors({ submit: error instanceof Error ? error.message : 'Failed to submit survey' });
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleClassificationClose = () => {
+    setShowClassificationResult(false);
+    navigate(user?.role === 'worker' ? '/worker/family' : '/employer/family');
+  };
+
+  const handleClassificationContinue = () => {
+    setShowClassificationResult(false);
+    navigate(user?.role === 'worker' ? '/worker/family' : '/employer/family');
   };
 
   const renderStepIndicator = () => {
@@ -810,62 +831,78 @@ const FamilySurvey: React.FC = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-6 w-6 text-primary-600" />
-            Family Survey
-          </CardTitle>
-          <p className="text-sm text-gray-600 mt-2">
-            Please fill out this survey to register your family information. This data will be used for welfare benefit eligibility.
-          </p>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit}>
-            {renderStepIndicator()}
+    <>
+      <ClassificationResultModal
+        isOpen={showClassificationResult}
+        onClose={handleClassificationClose}
+        result={classificationResult}
+        onContinue={handleClassificationContinue}
+      />
+      
+      <div className="max-w-4xl mx-auto p-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-6 w-6 text-primary-600" />
+              Family Survey
+            </CardTitle>
+            <p className="text-sm text-gray-600 mt-2">
+              Please fill out this survey to register your family information. This data will be used for welfare benefit eligibility and APL/BPL classification.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit}>
+              {renderStepIndicator()}
 
-            {currentStep === 1 && renderStep1()}
-            {currentStep === 2 && renderStep2()}
-            {currentStep === 3 && renderStep3()}
-            {currentStep === 4 && renderStep4()}
-            {currentStep === 5 && renderStep5()}
+              {currentStep === 1 && renderStep1()}
+              {currentStep === 2 && renderStep2()}
+              {currentStep === 3 && renderStep3()}
+              {currentStep === 4 && renderStep4()}
+              {currentStep === 5 && renderStep5()}
 
-            {errors.submit && (
-              <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-                <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
-                <p className="text-sm text-red-600">{errors.submit}</p>
-              </div>
-            )}
-
-            <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-200">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleBack}
-                disabled={currentStep === 1 || isSubmitting}
-              >
-                Back
-              </Button>
-
-              <div className="text-sm text-gray-600">
-                Step {currentStep} of 5
-              </div>
-
-              {currentStep < 5 ? (
-                <Button type="button" onClick={handleNext} disabled={isSubmitting}>
-                  Next <ChevronRight className="h-4 w-4 ml-1" />
-                </Button>
-              ) : (
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? <Spinner size="sm" /> : 'Submit Survey'}
-                </Button>
+              {errors.submit && (
+                <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+                  <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
+                  <p className="text-sm text-red-600">{errors.submit}</p>
+                </div>
               )}
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+
+              <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-200">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleBack}
+                  disabled={currentStep === 1 || isSubmitting}
+                >
+                  Back
+                </Button>
+
+                <div className="text-sm text-gray-600">
+                  Step {currentStep} of 5
+                </div>
+
+                {currentStep < 5 ? (
+                  <Button type="button" onClick={handleNext} disabled={isSubmitting}>
+                    Next <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                ) : (
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? (
+                      <>
+                        <Spinner size="sm" className="mr-2" />
+                        Processing...
+                      </>
+                    ) : (
+                      'Submit & Get Classification'
+                    )}
+                  </Button>
+                )}
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    </>
   );
 };
 
