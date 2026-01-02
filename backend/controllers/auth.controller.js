@@ -43,7 +43,8 @@ export const register = async (req, res) => {
       name,
       role,
       phone,
-      idHash
+      idHash,
+      ration_no: additionalData.ration_no || null
     });
     
     // Create role-specific profile
@@ -58,6 +59,9 @@ export const register = async (req, res) => {
           phone,
           aadhaarLast4: aadhaarNumber?.slice(-4),
           bankAccount: additionalData.bankAccount || 'PENDING',
+          employmentType: additionalData.employmentType || 'informal',
+          isFarmer: additionalData.isFarmer || false,
+          kccLimit: additionalData.kccLimit || 0,
           ...additionalData
         });
         

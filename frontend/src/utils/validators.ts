@@ -71,9 +71,23 @@ export const workerRegistrationSchema = z.object({
   password: passwordSchema,
   confirmPassword: z.string(),
   ration_no: rationSchema,
+  employmentType: z.enum(['formal', 'informal'], {
+    errorMap: () => ({ message: 'Please select employment type' })
+  }),
+  isFarmer: z.boolean().optional(),
+  kccLimit: z.number().min(0, 'KCC limit must be positive').optional(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: 'Passwords do not match',
   path: ['confirmPassword'],
+}).refine((data) => {
+  // If farmer, KCC limit can be provided but not required
+  if (data.isFarmer && data.kccLimit && data.kccLimit < 0) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'Invalid KCC limit',
+  path: ['kccLimit'],
 });
 
 // Employer registration schema

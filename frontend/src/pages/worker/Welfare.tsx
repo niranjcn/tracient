@@ -25,6 +25,8 @@ import {
 } from '@/components/common';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { CHART_COLORS, WELFARE_SCHEMES, BPL_THRESHOLD } from '@/utils/constants';
+import { familyService } from '@/services';
+import { Family } from '@/types/family';
 
 interface BPLStatusData {
   status: 'eligible' | 'not_eligible' | 'pending';
@@ -76,21 +78,33 @@ const mockBPLData: BPLStatusData = {
 
 const BPLStatus: React.FC = () => {
   const [data, setData] = useState<BPLStatusData | null>(null);
+  const [family, setFamily] = useState<Family | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
-    const fetchData = async () => {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setData(mockBPLData);
-      setIsLoading(false);
-    };
     fetchData();
   }, []);
 
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      const familyData = await familyService.getMyFamily();
+      setFamily(familyData.family);
+      // Use mock data for now, but we have family data for classification
+      setData(mockBPLData);
+    } catch (error) {
+      console.error('Error fetching family data:', error);
+      // Fall back to mock data
+      setData(mockBPLData);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await fetchData();
     setIsRefreshing(false);
   };
 
@@ -132,48 +146,88 @@ const BPLStatus: React.FC = () => {
         </div>
       </div>
 
-      {/* Status Banner */}
-      <Card className={`border-l-4 ${data.status === 'eligible' ? 'border-l-green-500 bg-green-50' : data.status === 'not_eligible' ? 'border-l-red-500 bg-red-50' : 'border-l-amber-500 bg-amber-50'}`}>
-        <CardContent className="p-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className={`p-4 rounded-full ${data.status === 'eligible' ? 'bg-green-100' : data.status === 'not_eligible' ? 'bg-red-100' : 'bg-amber-100'}`}>
-                {data.status === 'eligible' ? (
-                  <CheckCircle className="h-8 w-8 text-green-600" />
-                ) : data.status === 'not_eligible' ? (
-                  <XCircle className="h-8 w-8 text-red-600" />
-                ) : (
-                  <Clock className="h-8 w-8 text-amber-600" />
-                )}
-              </div>
-              <div>
-                <div className="flex items-center gap-3">
-                  <h2 className="text-xl font-bold text-gray-900">
-                    {data.status === 'eligible' ? 'BPL Eligible' : data.status === 'not_eligible' ? 'Not BPL Eligible' : 'Verification Pending'}
-                  </h2>
-                  <BPLBadge status={data.status} />
+      {/* APL/BPL Classification Status Card */}
+      {family && family.classification && family.classification !== 'pending' && (
+        <Card className={`border-2 ${family.classification === 'BPL' ? 'border-orange-300 bg-orange-50' : 'border-green-300 bg-green-50'}`}>
+          <CardContent className="py-6">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className={`p-4 rounded-full ${family.classification === 'BPL' ? 'bg-orange-200' : 'bg-green-200'}`}>
+                  {family.classification === 'BPL' ? (
+                    <Shield className={`h-8 w-8 text-orange-700`} />
+                  ) : (
+                    <Shield className={`h-8 w-8 text-green-700`} />
+                  )}
                 </div>
-                <p className="text-gray-600 mt-1">
-                  {data.status === 'eligible' 
-                    ? 'You are eligible for welfare benefits under BPL category'
-                    : data.status === 'not_eligible'
-                    ? 'Your income exceeds the BPL threshold'
-                    : 'Your status is being verified'}
-                </p>
-                {data.certificateId && (
-                  <p className="text-sm text-gray-500 mt-2">
-                    Certificate ID: <span className="font-mono">{data.certificateId}</span>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className={`text-2xl font-bold ${family.classification === 'BPL' ? 'text-orange-800' : 'text-green-800'}`}>
+                      {family.classification === 'BPL' ? 'Below Poverty Line' : 'Above Poverty Line'}
+                    </h2>
+                    <Badge variant={family.classification === 'BPL' ? 'warning' : 'success'}>
+                      {family.classification}
+                    </Badge>
+                  </div>
+                  <p className={`text-sm ${family.classification === 'BPL' ? 'text-orange-600' : 'text-green-600'}`}>
+                    {family.classification_reason || 'Classification completed'}
                   </p>
-                )}
+                  {family.classification_confidence > 0 && (
+                    <p className="text-sm text-gray-600 mt-1">
+                      Confidence: {family.classification_confidence}%
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-sm text-gray-500">Last Verified</p>
-              <p className="font-medium text-gray-900">{formatDate(data.lastVerified)}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+
+            {/* SECC Analysis Details */}
+            {(family.secc_deprivation_count > 0 || family.secc_exclusion_met?.length > 0 || family.secc_inclusion_met?.length > 0) && (
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <h4 className="text-sm font-semibold text-gray-900 mb-3">SECC 2011 Analysis</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                  {family.secc_inclusion_met && family.secc_inclusion_met.length > 0 && (
+                    <div className="bg-white rounded-lg p-3">
+                      <p className="font-medium text-green-700 mb-2">✅ Inclusion Criteria</p>
+                      <ul className="text-gray-600 space-y-1">
+                        {family.secc_inclusion_met.map((item, idx) => (
+                          <li key={idx} className="text-xs">• {item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {family.secc_exclusion_met && family.secc_exclusion_met.length > 0 && (
+                    <div className="bg-white rounded-lg p-3">
+                      <p className="font-medium text-red-700 mb-2">❌ Exclusion Criteria</p>
+                      <ul className="text-gray-600 space-y-1">
+                        {family.secc_exclusion_met.map((item, idx) => (
+                          <li key={idx} className="text-xs">• {item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {family.secc_deprivation_met && family.secc_deprivation_met.length > 0 && (
+                    <div className="bg-white rounded-lg p-3">
+                      <p className="font-medium text-orange-700 mb-2">⚠️ Deprivation Indicators ({family.secc_deprivation_count})</p>
+                      <ul className="text-gray-600 space-y-1">
+                        {family.secc_deprivation_met.map((item, idx) => (
+                          <li key={idx} className="text-xs">• {item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Recommendation Message */}
+            {family.recommendation_message && (
+              <div className="mt-4 p-3 bg-white rounded-lg">
+                <p className="text-sm text-gray-700">{family.recommendation_message}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Income Overview */}
       <div className="grid lg:grid-cols-3 gap-6">
@@ -252,7 +306,7 @@ const BPLStatus: React.FC = () => {
       </div>
 
       {/* Eligible Welfare Schemes */}
-      {data.status === 'eligible' && (
+      {((family && family.eligible_schemes && family.eligible_schemes.length > 0) || data.status === 'eligible') && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -264,23 +318,33 @@ const BPLStatus: React.FC = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {data.eligibleSchemes.map((scheme) => (
-                <div 
-                  key={scheme.id}
-                  className="p-4 border border-gray-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors"
-                >
-                  <h4 className="font-medium text-gray-900">{scheme.name}</h4>
-                  <p className="text-sm text-gray-500 mt-1">{scheme.description}</p>
-                  <div className="flex items-center justify-between mt-3">
-                    <Badge variant="success" className="text-xs">Eligible</Badge>
-                    <Button variant="ghost" size="sm" className="text-primary-600">
-                      Apply →
-                    </Button>
+            {family && family.eligible_schemes && family.eligible_schemes.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {family.eligible_schemes.map((scheme, idx) => (
+                  <Badge key={idx} variant="info" className="text-sm px-3 py-1">
+                    {scheme}
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {data.eligibleSchemes.map((scheme) => (
+                  <div 
+                    key={scheme.id}
+                    className="p-4 border border-gray-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors"
+                  >
+                    <h4 className="font-medium text-gray-900">{scheme.name}</h4>
+                    <p className="text-sm text-gray-500 mt-1">{scheme.description}</p>
+                    <div className="flex items-center justify-between mt-3">
+                      <Badge variant="success" className="text-xs">Eligible</Badge>
+                      <Button variant="ghost" size="sm" className="text-primary-600">
+                        Apply →
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

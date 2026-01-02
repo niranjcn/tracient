@@ -21,9 +21,13 @@ export interface RegisterData {
   password: string;
   role: UserRole;
   aadhaarNumber?: string;
+  ration_no?: number;
   organizationName?: string;
   organizationType?: string;
   department?: string;
+  employmentType?: 'formal' | 'informal';
+  isFarmer?: boolean;
+  kccLimit?: number;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -117,8 +121,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         phone: data.phone,
         password: data.password,
         aadhaarNumber: data.aadhaarNumber,
+        ration_no: data.ration_no,
         companyName: data.organizationName,
         department: data.department,
+        employmentType: data.employmentType,
+        isFarmer: data.isFarmer,
+        kccLimit: data.kccLimit,
       };
       await authService.register(apiData as any);
       showToast.success('Registration successful! Please verify your email.');

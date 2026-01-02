@@ -50,7 +50,20 @@ export const createWorkerValidator = [
   body('gender')
     .optional()
     .isIn(['male', 'female', 'other'])
-    .withMessage('Gender must be male, female, or other')
+    .withMessage('Gender must be male, female, or other'),
+  body('employmentType')
+    .optional()
+    .isIn(['formal', 'informal'])
+    .withMessage('Employment type must be either formal or informal'),
+  body('isFarmer')
+    .optional()
+    .isBoolean()
+    .withMessage('isFarmer must be a boolean value'),
+  body('kccLimit')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('KCC limit must be a positive number')
+    .toFloat()
 ];
 
 export const updateWorkerValidator = [

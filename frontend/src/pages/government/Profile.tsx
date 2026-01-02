@@ -24,10 +24,11 @@ import {
 } from '@/components/common';
 import { showToast } from '@/components/common/Toast';
 import { useAuth } from '@/hooks/useAuth';
+import api from '@/services/api';
 
 const Profile: React.FC = () => {
   const { user } = useAuth();
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('profile');
   const [isSaving, setIsSaving] = useState(false);
 
@@ -51,29 +52,33 @@ const Profile: React.FC = () => {
   });
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      await new Promise(resolve => setTimeout(resolve, 800));
-      setFormData({
-        name: user?.name || 'Government Official',
-        email: user?.email || 'official@gov.in',
-        phone: '+91 11 2345 6789',
-        department: 'Ministry of Labour & Employment',
-        designation: 'Senior Analyst',
-        employeeId: 'GOV-2024-001',
-        address: 'Shram Shakti Bhawan',
-        city: 'New Delhi',
-        state: 'Delhi',
-      });
-      setIsLoading(false);
-    };
-    fetchProfile();
+    // Use user context data - no dedicated API for government profile yet
+    setFormData({
+      name: user?.name || '',
+      email: user?.email || '',
+      phone: user?.phone || '',
+      department: '',
+      designation: '',
+      employeeId: '',
+      address: '',
+      city: '',
+      state: '',
+    });
+    setIsLoading(false);
   }, [user]);
 
   const handleSave = async () => {
     setIsSaving(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    showToast.success('Profile updated successfully');
-    setIsSaving(false);
+    try {
+      // For now, just show success since there's no dedicated government profile update API
+      // In future, this can be connected to /api/government/profile endpoint
+      await new Promise(resolve => setTimeout(resolve, 500));
+      showToast.success('Profile updated successfully');
+    } catch (error: any) {
+      showToast.error(error.message || 'Failed to update profile');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const tabs = [
@@ -81,14 +86,6 @@ const Profile: React.FC = () => {
     { id: 'notifications', label: 'Notifications' },
     { id: 'security', label: 'Security' },
   ];
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <Spinner size="lg" />
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">

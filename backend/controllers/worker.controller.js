@@ -49,6 +49,9 @@ export const createWorker = async (req, res) => {
       phone,
       bankAccount,
       aadhaarLast4: aadhaarNumber.slice(-4),
+      employmentType: additionalData.employmentType || 'informal',
+      isFarmer: additionalData.isFarmer || false,
+      kccLimit: additionalData.kccLimit || 0,
       ...additionalData
     });
     
@@ -443,6 +446,13 @@ export const getMyProfile = async (req, res) => {
         occupation: worker.occupation,
         skills: worker.skills || []
       },
+      employmentInfo: {
+        employmentType: worker.employmentType || 'informal',
+        isFarmer: worker.isFarmer || false,
+        kccLimit: worker.kccLimit || 0,
+        currentEmployerId: worker.currentEmployerId,
+        occupation: worker.occupation
+      },
       addressInfo: {
         street: worker.address?.street || '',
         city: worker.address?.city || '',
@@ -485,7 +495,7 @@ export const getMyProfile = async (req, res) => {
  */
 export const updateMyProfile = async (req, res) => {
   try {
-    const { personalInfo, addressInfo, bankDetails } = req.body;
+    const { personalInfo, addressInfo, bankDetails, employmentInfo } = req.body;
     
     const worker = await Worker.findOne({ userId: req.user.id });
     
@@ -506,6 +516,14 @@ export const updateMyProfile = async (req, res) => {
       if (personalInfo.alternatePhone) worker.alternatePhone = personalInfo.alternatePhone;
       if (personalInfo.occupation) worker.occupation = personalInfo.occupation;
       if (Array.isArray(personalInfo.skills)) worker.skills = personalInfo.skills;
+    }
+    
+    // Update employment information
+    if (employmentInfo) {
+      if (employmentInfo.employmentType) worker.employmentType = employmentInfo.employmentType;
+      if (typeof employmentInfo.isFarmer === 'boolean') worker.isFarmer = employmentInfo.isFarmer;
+      if (typeof employmentInfo.kccLimit === 'number') worker.kccLimit = employmentInfo.kccLimit;
+      if (employmentInfo.occupation) worker.occupation = employmentInfo.occupation;
     }
     
     // Update address information

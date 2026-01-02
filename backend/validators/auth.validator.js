@@ -27,7 +27,20 @@ export const registerValidator = [
   body('aadhaarNumber')
     .optional()
     .matches(/^\d{12}$/)
-    .withMessage('Aadhaar number must be 12 digits')
+    .withMessage('Aadhaar number must be 12 digits'),
+  body('employmentType')
+    .optional()
+    .isIn(['formal', 'informal'])
+    .withMessage('Employment type must be either formal or informal'),
+  body('isFarmer')
+    .optional()
+    .isBoolean()
+    .withMessage('isFarmer must be a boolean value'),
+  body('kccLimit')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('KCC limit must be a positive number')
+    .toFloat()
 ];
 
 export const loginValidator = [
