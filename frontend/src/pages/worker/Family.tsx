@@ -13,7 +13,9 @@ import {
   Loader2,
   Shield,
   AlertTriangle,
-  Award
+  Award,
+  Edit,
+  UserPlus
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, Button, Badge, Spinner } from '@/components/common';
 import { familyService } from '@/services';
@@ -29,6 +31,9 @@ const FamilyPage: React.FC = () => {
   const [family, setFamily] = useState<Family | null>(null);
   const [members, setMembers] = useState<FamilyMember[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [requiresUpdate, setRequiresUpdate] = useState(false);
+  const [actualMemberCount, setActualMemberCount] = useState(0);
+  const [autoUpdated, setAutoUpdated] = useState(false);
 
   useEffect(() => {
     fetchFamilyData();
@@ -42,6 +47,24 @@ const FamilyPage: React.FC = () => {
       console.log('📊 Family data received:', data);
       setFamily(data.family);
       setMembers(data.members || []);
+      
+      // Check if family needs updating
+      const status = await familyService.checkSurveyStatus();
+      console.log('📋 Survey status:', status);
+      setRequiresUpdate(status.requiresUpdate || false);
+      setActualMemberCount(status.actualMemberCount || 0);
+      setAutoUpdated(status.autoUpdated || false);
+      
+      // If status says requires update or family object has flag set, show prompt
+      if (data.family?.requires_update || status.requiresUpdate) {
+        setRequiresUpdate(true);
+      }
+      
+      if (status.autoUpdated) {
+        // Refresh to get updated family size
+        const updatedData = await familyService.getMyFamily();
+        setFamily(updatedData.family);
+      }
     } catch (err) {
       console.error('❌ Error fetching family:', err);
       setError(err instanceof Error ? err.message : 'Failed to load family data');
@@ -68,6 +91,12 @@ const FamilyPage: React.FC = () => {
 
   const handleStartSurvey = () => {
     navigate(user?.role === 'worker' ? '/worker/family/survey' : '/employer/family/survey');
+  };
+  
+  const handleUpdateFamily = () => {
+    navigate(user?.role === 'worker' ? '/worker/family/update' : '/employer/family/update', {
+      state: { family, requiresUpdate, actualMemberCount }
+    });
   };
 
   if (isLoading) {
@@ -154,11 +183,64 @@ const FamilyPage: React.FC = () => {
           <h1 className="text-2xl font-bold text-gray-900">Family Information</h1>
           <p className="text-gray-600 mt-1">Ration Card: {family.ration_no}</p>
         </div>
-        <Badge variant="success" className="gap-2">
-          <CheckCircle2 className="h-4 w-4" />
-          Survey Completed
-        </Badge>
+        <div className="flex items-center gap-3">
+          <Button 
+            onClick={handleUpdateFamily} 
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <Edit className="h-4 w-4" />
+            Update Family
+          </Button>
+          <Badge variant="success" className="gap-2">
+            <CheckCircle2 className="h-4 w-4" />
+            Survey Completed
+          </Badge>
+        </div>
       </div>
+
+      {/* New Member Detection Alert */}
+      {requiresUpdate && (
+        <Card className="border-2 border-blue-300 bg-blue-50">
+          <CardContent className="py-6">
+            <div className="flex items-start gap-4">
+              <div className="p-3 rounded-full bg-blue-200">
+                <UserPlus className="h-6 w-6 text-blue-700" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-blue-900 mb-2">
+                  {autoUpdated ? 'New Family Member Detected!' : 'Family Update Required'}
+                </h3>
+                <p className="text-sm text-blue-800 mb-3">
+                  {autoUpdated ? (
+                    <>
+                      We've detected that {actualMemberCount} user(s) now share your ration number, 
+                      but your family survey showed only {family.family_size} member(s). 
+                      We've automatically updated the family size to {actualMemberCount}.
+                    </>
+                  ) : (
+                    <>
+                      Your family demographics need to be updated to reflect recent changes. 
+                      This ensures accurate welfare benefit calculations.
+                    </>
+                  )}
+                </p>
+                <p className="text-sm text-blue-800 mb-4">
+                  Please update your family demographics to reflect the current household composition 
+                  for accurate welfare benefit calculations.
+                </p>
+                <Button 
+                  onClick={handleUpdateFamily}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Update Family Details Now
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Pending Classification Notice */}
       {(!family.classification || family.classification === 'pending') && (
@@ -360,7 +442,7 @@ const FamilyPage: React.FC = () => {
       </div>
 
       {/* Land & Agriculture */}
-      {(family.total_land_acres > 0 || family.kcc_limit > 0) && (
+      {family.total_land_acres > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -369,7 +451,7 @@ const FamilyPage: React.FC = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
               <div>
                 <p className="text-sm text-gray-600">Total Land</p>
                 <p className="text-xl font-bold text-gray-900">{family.total_land_acres} acres</p>
@@ -381,10 +463,6 @@ const FamilyPage: React.FC = () => {
               <div>
                 <p className="text-sm text-gray-600">Crop Seasons</p>
                 <p className="text-xl font-bold text-gray-900">{family.crop_seasons}/year</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">KCC Limit</p>
-                <p className="text-xl font-bold text-gray-900">{formatCurrency(family.kcc_limit)}</p>
               </div>
             </div>
           </CardContent>

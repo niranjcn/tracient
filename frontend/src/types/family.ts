@@ -11,6 +11,7 @@ export interface Family {
   adults_16_59: number;
   adult_males_16_59: number;
   adult_females_16_59: number;
+  adult_other_16_59: number;
   elderly_60_plus: number;
   able_bodied_adults: number;
   working_members: number;
@@ -31,7 +32,6 @@ export interface Family {
   total_land_acres: number;
   irrigated_land_acres: number;
   crop_seasons: number;
-  kcc_limit: number;
   
   // Assets - Exclusion Criteria
   owns_two_wheeler: boolean;
@@ -87,6 +87,10 @@ export interface Family {
   // Classification metadata
   classified_at: string | null;
   
+  // Family update tracking
+  requires_update: boolean;
+  last_auto_update: string | null;
+  
   // Metadata
   createdAt: string;
   updatedAt: string;
@@ -132,7 +136,7 @@ export interface SurveySubmitResponse {
   };
 }
 
-export interface FamilySurveyData extends Omit<Family, '_id' | 'createdAt' | 'updatedAt' | 'classification' | 'classification_confidence' | 'classification_reason' | 'ml_classification' | 'ml_bpl_probability' | 'ml_apl_probability' | 'secc_classification' | 'secc_reason' | 'secc_has_exclusion' | 'secc_has_inclusion' | 'secc_deprivation_count' | 'secc_exclusion_met' | 'secc_inclusion_met' | 'secc_deprivation_met' | 'recommendation_priority' | 'recommendation_message' | 'eligible_schemes' | 'classified_at'> {}
+export interface FamilySurveyData extends Omit<Family, '_id' | 'createdAt' | 'updatedAt' | 'classification' | 'classification_confidence' | 'classification_reason' | 'ml_classification' | 'ml_bpl_probability' | 'ml_apl_probability' | 'secc_classification' | 'secc_reason' | 'secc_has_exclusion' | 'secc_has_inclusion' | 'secc_deprivation_count' | 'secc_exclusion_met' | 'secc_inclusion_met' | 'secc_deprivation_met' | 'recommendation_priority' | 'recommendation_message' | 'eligible_schemes' | 'classified_at' | 'requires_update' | 'last_auto_update'> {}
 
 export interface FamilyMember {
   id: string;

@@ -64,6 +64,13 @@ const familySchema = new mongoose.Schema({
     max: 10,
     default: 0
   },
+  adult_other_16_59: {
+    type: Number,
+    required: true,
+    min: 0,
+    max: 10,
+    default: 0
+  },
   elderly_60_plus: {
     type: Number,
     required: true,
@@ -344,6 +351,16 @@ const familySchema = new mongoose.Schema({
   
   // Classification metadata
   classified_at: {
+    type: Date,
+    default: null
+  },
+  
+  // Family update tracking
+  requires_update: {
+    type: Boolean,
+    default: false
+  },
+  last_auto_update: {
     type: Date,
     default: null
   }

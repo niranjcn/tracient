@@ -7,6 +7,7 @@ import { generateIdHash, hashPassword, comparePassword } from '../utils/hash.uti
 import { successResponse, createdResponse, errorResponse, unauthorizedResponse } from '../utils/response.util.js';
 import { sendWelcomeEmail, sendPasswordResetEmail } from '../services/email.service.js';
 import { registerWorkerOnChain } from '../services/fabric.service.js';
+import { syncFamilyMemberCount } from '../services/family-sync.service.js';
 import { logger } from '../utils/logger.util.js';
 import { ROLES } from '../config/constants.js';
 import { isBlockchainEnabled, logBlockchainSkip } from '../config/blockchain.config.js';
@@ -46,6 +47,16 @@ export const register = async (req, res) => {
       idHash,
       ration_no: additionalData.ration_no || null
     });
+    
+    // Auto-sync family member count if user has ration number
+    if (user.ration_no) {
+      try {
+        await syncFamilyMemberCount(user.ration_no);
+      } catch (syncError) {
+        logger.error('Family sync failed during registration:', syncError.message);
+        // Don't fail registration if sync fails
+      }
+    }
     
     // Create role-specific profile
     let profile = null;

@@ -296,7 +296,7 @@ const FamilyPage: React.FC = () => {
       </div>
 
       {/* Land & Agriculture */}
-      {(family.total_land_acres > 0 || family.kcc_limit > 0) && (
+      {family.total_land_acres > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -305,7 +305,7 @@ const FamilyPage: React.FC = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
               <div>
                 <p className="text-sm text-gray-600">Total Land</p>
                 <p className="text-xl font-bold text-gray-900">{family.total_land_acres} acres</p>
@@ -317,10 +317,6 @@ const FamilyPage: React.FC = () => {
               <div>
                 <p className="text-sm text-gray-600">Crop Seasons</p>
                 <p className="text-xl font-bold text-gray-900">{family.crop_seasons}/year</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">KCC Limit</p>
-                <p className="text-xl font-bold text-gray-900">{formatCurrency(family.kcc_limit)}</p>
               </div>
             </div>
           </CardContent>
