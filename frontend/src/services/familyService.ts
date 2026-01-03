@@ -8,8 +8,15 @@ export const familyService = {
     return response.data || response;
   },
 
-  // Check if survey exists for user's family
-  async checkSurveyStatus(): Promise<{ surveyCompleted: boolean; family: Family | null }> {
+  // Check if survey exists for user's family - now includes update detection
+  async checkSurveyStatus(): Promise<{ 
+    surveyCompleted: boolean; 
+    family: Family | null;
+    requiresUpdate: boolean;
+    autoUpdated: boolean;
+    actualMemberCount: number;
+    registeredMemberCount: number;
+  }> {
     const response: any = await api.get('/family/survey-status');
     return response.data || response;
   },
@@ -25,9 +32,13 @@ export const familyService = {
     return api.get(`/family/ration/${ration_no}`);
   },
 
-  // Update family details
-  async updateFamily(ration_no: number, data: Partial<FamilySurveyData>): Promise<Family> {
-    return api.put(`/family/ration/${ration_no}`, data);
+  // Update family details with optional reclassification
+  async updateFamily(ration_no: number, data: Partial<FamilySurveyData>, reclassify: boolean = true): Promise<{
+    family: Family;
+    classification: ClassificationResult | null;
+  }> {
+    const response: any = await api.put(`/family/ration/${ration_no}?reclassify=${reclassify}`, data);
+    return response.data || response;
   },
 
   // Get all family members by ration number

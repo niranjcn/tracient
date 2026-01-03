@@ -34,14 +34,25 @@ const WorkerRegistrationForm: React.FC<{
 }> = ({ onSubmit, isLoading, error, onClearError, onBack }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [employmentType, setEmploymentType] = useState<'formal' | 'informal'>('informal');
+  const [isFarmer, setIsFarmer] = useState(false);
 
   const {
     register,
     handleSubmit,
     formState: { errors },
+    setValue,
+    watch,
   } = useForm<WorkerFormData>({
     resolver: zodResolver(registerWorkerSchema),
+    defaultValues: {
+      employmentType: 'informal',
+      isFarmer: false,
+    }
   });
+
+  const watchEmploymentType = watch('employmentType');
+  const watchIsFarmer = watch('isFarmer');
 
   return (
     <div className="space-y-6">
@@ -105,6 +116,100 @@ const WorkerRegistrationForm: React.FC<{
           error={errors.ration_no?.message}
           {...register('ration_no')}
         />
+
+        {/* Employment Type */}
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-700">
+            Employment Type <span className="text-red-500">*</span>
+          </label>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setEmploymentType('formal');
+                setValue('employmentType', 'formal');
+                setIsFarmer(false);
+                setValue('isFarmer', false);
+              }}
+              className={`p-3 border-2 rounded-lg text-sm font-medium transition-all ${
+                watchEmploymentType === 'formal'
+                  ? 'border-primary-500 bg-primary-50 text-primary-700'
+                  : 'border-gray-200 hover:border-gray-300 text-gray-700'
+              }`}
+            >
+              Formal Job
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEmploymentType('informal');
+                setValue('employmentType', 'informal');
+              }}
+              className={`p-3 border-2 rounded-lg text-sm font-medium transition-all ${
+                watchEmploymentType === 'informal'
+                  ? 'border-primary-500 bg-primary-50 text-primary-700'
+                  : 'border-gray-200 hover:border-gray-300 text-gray-700'
+              }`}
+            >
+              Informal Job
+            </button>
+          </div>
+          {errors.employmentType && (
+            <p className="text-sm text-red-600">{errors.employmentType.message}</p>
+          )}
+        </div>
+
+        {/* Farmer Status - Only show if informal */}
+        {watchEmploymentType === 'informal' && (
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">
+              Are you a farmer?
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsFarmer(true);
+                  setValue('isFarmer', true);
+                }}
+                className={`p-3 border-2 rounded-lg text-sm font-medium transition-all ${
+                  watchIsFarmer === true
+                    ? 'border-green-500 bg-green-50 text-green-700'
+                    : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                }`}
+              >
+                Yes, I am a farmer
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsFarmer(false);
+                  setValue('isFarmer', false);
+                  setValue('kccLimit', undefined);
+                }}
+                className={`p-3 border-2 rounded-lg text-sm font-medium transition-all ${
+                  watchIsFarmer === false
+                    ? 'border-gray-500 bg-gray-50 text-gray-700'
+                    : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                }`}
+              >
+                No
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* KCC Limit - Only show if farmer */}
+        {watchEmploymentType === 'informal' && watchIsFarmer && (
+          <Input
+            label="Kisan Credit Card (KCC) Limit (Optional)"
+            type="number"
+            placeholder="Enter KCC limit amount"
+            leftIcon={<CreditCard className="h-5 w-5" />}
+            error={errors.kccLimit?.message}
+            {...register('kccLimit', { valueAsNumber: true })}
+          />
+        )}
 
         <Input
           label="Password"
@@ -376,6 +481,9 @@ const RegisterForm: React.FC = () => {
         password: data.password,
         aadhaarNumber: data.aadhaar,
         ration_no: data.ration_no ? parseInt(data.ration_no) : undefined,
+        employmentType: data.employmentType,
+        isFarmer: data.isFarmer,
+        kccLimit: data.kccLimit,
         role: 'worker' as UserRole,
       });
       setStep('otp');

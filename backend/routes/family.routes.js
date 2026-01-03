@@ -4,6 +4,7 @@
 import { Router } from 'express';
 import { body } from 'express-validator';
 import { familyController } from '../controllers/index.js';
+import { familySyncController } from '../controllers/family-sync.controller.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 import { authorize } from '../middleware/role.middleware.js';
 import { validate } from '../middleware/validation.middleware.js';
@@ -127,6 +128,30 @@ router.post(
   authenticate,
   authorize(ROLES.WORKER, ROLES.EMPLOYER),
   familyController.reclassifyFamily
+);
+
+/**
+ * @route POST /api/family/sync/all
+ * @desc Manually sync all families (update member counts)
+ * @access Private (Admin, Government)
+ */
+router.post(
+  '/sync/all',
+  authenticate,
+  authorize(ROLES.ADMIN, ROLES.GOVERNMENT),
+  familySyncController.syncAll
+);
+
+/**
+ * @route POST /api/family/sync/:ration_no
+ * @desc Manually sync specific family by ration number
+ * @access Private (Admin, Government)
+ */
+router.post(
+  '/sync/:ration_no',
+  authenticate,
+  authorize(ROLES.ADMIN, ROLES.GOVERNMENT),
+  familySyncController.syncByRation
 );
 
 export default router;

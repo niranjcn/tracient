@@ -56,19 +56,47 @@ export const familyController = {
           success: true,
           data: {
             surveyCompleted: false,
-            family: null
+            family: null,
+            requiresUpdate: false,
+            actualMemberCount: 0,
+            registeredMemberCount: 0
           }
         });
       }
 
       // Check if family exists
       const family = await Family.findOne({ ration_no: user.ration_no });
+      
+      // Count actual users with this ration number
+      const actualMemberCount = await User.countDocuments({ ration_no: user.ration_no });
+      
+      // Check if family size needs update or if update is required
+      let requiresUpdate = false;
+      let autoUpdated = false;
+      
+      if (family && family.family_size < actualMemberCount) {
+        // Auto-increment family size and flag for ALL users to update
+        family.family_size = actualMemberCount;
+        family.requires_update = true;
+        family.last_auto_update = new Date();
+        await family.save();
+        requiresUpdate = true;
+        autoUpdated = true;
+        logger.info(`Auto-updated family size for ration ${user.ration_no}: ${actualMemberCount} members - All users flagged for update`);
+      } else if (family && family.requires_update) {
+        // Check existing requires_update flag
+        requiresUpdate = true;
+      }
 
       res.json({
         success: true,
         data: {
           surveyCompleted: !!family,
-          family
+          family,
+          requiresUpdate,
+          autoUpdated,
+          actualMemberCount,
+          registeredMemberCount: family ? family.family_size : 0
         }
       });
     } catch (error) {
@@ -221,6 +249,7 @@ export const familyController = {
       const { ration_no } = req.params;
       const updateData = req.body;
       const userId = req.user.id;
+      const { reclassify = true } = req.query; // Option to trigger reclassification
 
       // Verify user belongs to this family
       const user = await User.findById(userId);
@@ -233,6 +262,13 @@ export const familyController = {
 
       // Don't allow changing ration_no
       delete updateData.ration_no;
+      
+      // Ensure family size matches actual member count
+      const actualMemberCount = await User.countDocuments({ ration_no: parseInt(ration_no) });
+      if (updateData.family_size && updateData.family_size < actualMemberCount) {
+        updateData.family_size = actualMemberCount;
+        logger.info(`Auto-corrected family size to match member count: ${actualMemberCount}`);
+      }
 
       const family = await Family.findOneAndUpdate(
         { ration_no: parseInt(ration_no) },
@@ -247,12 +283,67 @@ export const familyController = {
         });
       }
 
+      // Clear requires_update flag since a member has updated the family
+      if (family.requires_update) {
+        family.requires_update = false;
+        await family.save();
+        logger.info(`Cleared requires_update flag for ration ${ration_no} after member update`);
+      }
+      
       logger.info(`Family updated for ration number: ${ration_no}`);
+      
+      // Optionally run reclassification after update
+      let classificationResult = null;
+      if (reclassify === 'true' || reclassify === true) {
+        try {
+          const surveyData = family.toObject();
+          classificationResult = await classifyHousehold(surveyData);
+          
+          if (classificationResult && classificationResult.success) {
+            family.classification = classificationResult.classification;
+            family.classification_reason = classificationResult.reason;
+            family.classified_at = new Date();
+            
+            if (classificationResult.ml_prediction) {
+              family.ml_classification = classificationResult.ml_prediction.classification;
+              family.classification_confidence = classificationResult.ml_prediction.confidence;
+              family.ml_bpl_probability = classificationResult.ml_prediction.bpl_probability;
+              family.ml_apl_probability = classificationResult.ml_prediction.apl_probability;
+            }
+            
+            if (classificationResult.secc_analysis) {
+              family.secc_classification = classificationResult.secc_analysis.secc_classification;
+              family.secc_reason = classificationResult.secc_analysis.secc_reason;
+              family.secc_has_exclusion = classificationResult.secc_analysis.has_exclusion;
+              family.secc_has_inclusion = classificationResult.secc_analysis.has_inclusion;
+              family.secc_deprivation_count = classificationResult.secc_analysis.deprivation_count;
+              family.secc_exclusion_met = classificationResult.secc_analysis.exclusion_met || [];
+              family.secc_inclusion_met = classificationResult.secc_analysis.inclusion_met || [];
+              family.secc_deprivation_met = classificationResult.secc_analysis.deprivation_met || [];
+            }
+            
+            if (classificationResult.recommendation) {
+              family.recommendation_priority = classificationResult.recommendation.priority;
+              family.recommendation_message = classificationResult.recommendation.message;
+              family.eligible_schemes = classificationResult.recommendation.eligible_schemes || [];
+            }
+            
+            await family.save();
+            logger.info(`Family reclassified after update: ${ration_no} - ${family.classification}`);
+          }
+        } catch (classifyError) {
+          logger.error('Reclassification after update failed:', classifyError.message);
+          // Continue without classification
+        }
+      }
 
       res.json({
         success: true,
         message: 'Family details updated successfully',
-        data: family
+        data: {
+          family,
+          classification: classificationResult
+        }
       });
     } catch (error) {
       if (error.name === 'ValidationError') {

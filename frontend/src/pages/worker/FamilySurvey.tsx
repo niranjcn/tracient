@@ -16,6 +16,7 @@ import ClassificationResultModal from '@/components/family/ClassificationResultM
 import { familyService } from '@/services';
 import { FamilySurveyData, ClassificationResult, SurveySubmitResponse } from '@/types/family';
 import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'react-hot-toast';
 
 interface FormErrors {
   [key: string]: string;
@@ -58,8 +59,7 @@ const FamilySurvey: React.FC = () => {
     children_6_14: 0,
     adults_16_59: 1,
     adult_males_16_59: 0,
-    adult_females_16_59: 0,
-    elderly_60_plus: 0,
+    adult_females_16_59: 0,    adult_other_16_59: 0,    elderly_60_plus: 0,
     able_bodied_adults: 1,
     working_members: 1,
     literate_adults_above_25: 0,
@@ -73,7 +73,6 @@ const FamilySurvey: React.FC = () => {
     total_land_acres: 0,
     irrigated_land_acres: 0,
     crop_seasons: 0,
-    kcc_limit: 0,
     owns_two_wheeler: false,
     owns_four_wheeler: false,
     owns_tractor: false,
@@ -130,6 +129,33 @@ const FamilySurvey: React.FC = () => {
       }
       if (formData.head_age < 18 || formData.head_age > 100) {
         newErrors.head_age = 'Head age must be between 18 and 100';
+      }
+    }
+    
+    if (step === 2) {
+      // Validate age groups sum equals family size
+      const ageGroupTotal = (formData.children_0_6 || 0) + 
+                            (formData.children_6_14 || 0) + 
+                            (formData.adults_16_59 || 0) + 
+                            (formData.elderly_60_plus || 0);
+      
+      if (ageGroupTotal !== formData.family_size) {
+        newErrors.demographics = `Age groups total (${ageGroupTotal}) must equal family size (${formData.family_size})`;
+        toast.error('Age groups must add up to total family members');
+      }
+      
+      // Validate adult gender breakdown
+      const adultsCount = formData.adults_16_59 || 0;
+      const totalAdults = (formData.adult_males_16_59 || 0) + 
+                          (formData.adult_females_16_59 || 0) + 
+                          (formData.adult_other_16_59 || 0);
+      
+      if (adultsCount > 0 && totalAdults === 0) {
+        newErrors.adult_gender = `You have ${adultsCount} adult(s). Please specify their gender (Male/Female/Other)`;
+        toast.error('Adult gender breakdown is required');
+      } else if (totalAdults !== adultsCount) {
+        newErrors.adult_gender = `Adult gender breakdown (${totalAdults}) must equal total adults (${adultsCount})`;
+        toast.error('Adult gender breakdown must match total adults');
       }
     }
     
@@ -548,21 +574,6 @@ const FamilySurvey: React.FC = () => {
               onChange={handleChange}
               min="0"
               max="3"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Kisan Credit Card Limit (₹)
-            </label>
-            <input
-              type="number"
-              name="kcc_limit"
-              value={formData.kcc_limit}
-              onChange={handleChange}
-              min="0"
-              max="500000"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             />
           </div>

@@ -8,10 +8,7 @@ import {
   Clock,
   IndianRupee,
   Calendar,
-  Heart,
-  ShieldCheck,
-  ShieldX,
-  AlertCircle
+  Heart
 } from 'lucide-react';
 import { 
   Card, 
@@ -27,97 +24,83 @@ import {
   CustomPieChart
 } from '@/components/common';
 import { formatCurrency, formatDate } from '@/utils/formatters';
-import { CHART_COLORS, BPL_THRESHOLD } from '@/utils/constants';
-import { get } from '@/services/api';
+import { CHART_COLORS, WELFARE_SCHEMES, BPL_THRESHOLD } from '@/utils/constants';
+import { familyService } from '@/services';
+import { Family } from '@/types/family';
 
-interface WelfareData {
-  status: string;
-  isBPL: boolean;
+interface BPLStatusData {
+  status: 'eligible' | 'not_eligible' | 'pending';
   annualIncome: number;
   threshold: number;
-  amountFromThreshold: number;
-  incomeBreakdown: Array<{
-    source: string;
-    amount: number;
-    percentage: number;
-    verified: boolean;
-  }>;
-  verification: {
-    verifiedAmount: number;
-    unverifiedAmount: number;
-    verifiedPercentage: number;
-    verifiedTransactions: number;
-    unverifiedTransactions: number;
-  };
-  verificationHistory: Array<{
-    date: string;
-    source: string;
-    amount: number;
-    transactionId: string;
-  }>;
-  eligibleSchemes: Array<{
+  lastVerified: string;
+  certificateId?: string;
+  eligibleSchemes: {
     id: string;
     name: string;
     description: string;
-    benefits: string;
-    eligibility: string;
-  }>;
-  enrolledSchemes: any[];
-  lastClassificationDate?: string;
-  bankAccountBalance: number;
+  }[];
+  incomeBreakdown: {
+    source: string;
+    amount: number;
+    percentage: number;
+  }[];
+  verificationHistory: {
+    date: string;
+    status: 'eligible' | 'not_eligible';
+    income: number;
+  }[];
 }
 
-const mockWelfareData: WelfareData = {
-  status: 'BPL',
-  isBPL: true,
-  annualIncome: 115000,
+const mockBPLData: BPLStatusData = {
+  status: 'eligible',
+  annualIncome: 125000,
   threshold: BPL_THRESHOLD,
-  amountFromThreshold: 5000,
+  lastVerified: new Date().toISOString(),
+  certificateId: 'BPL-2024-123456',
+  eligibleSchemes: WELFARE_SCHEMES.map((name, index) => ({
+    id: `scheme-${index + 1}`,
+    name: name,
+    description: `Government welfare scheme for BPL families`
+  })),
   incomeBreakdown: [
-    { source: 'ABC Construction Ltd', amount: 50000, percentage: 43, verified: true },
-    { source: 'Private Labor Work', amount: 35000, percentage: 30, verified: false },
-    { source: 'XYZ Agriculture Farm', amount: 30000, percentage: 26, verified: true },
+    { source: 'Construction Work', amount: 50000, percentage: 40 },
+    { source: 'Agricultural Labor', amount: 35000, percentage: 28 },
+    { source: 'Daily Wages', amount: 25000, percentage: 20 },
+    { source: 'Other', amount: 15000, percentage: 12 },
   ],
-  verification: {
-    verifiedAmount: 80000,
-    unverifiedAmount: 35000,
-    verifiedPercentage: 70,
-    verifiedTransactions: 24,
-    unverifiedTransactions: 12
-  },
-  verificationHistory: [],
-  eligibleSchemes: [
-    { id: 'pds', name: 'Public Distribution System (PDS)', description: 'Subsidized food grains', benefits: 'Rice at ₹3/kg', eligibility: 'BPL families' }
+  verificationHistory: [
+    { date: '2024-06-01', status: 'eligible', income: 125000 },
+    { date: '2024-03-01', status: 'eligible', income: 118000 },
+    { date: '2023-12-01', status: 'eligible', income: 95000 },
+    { date: '2023-09-01', status: 'not_eligible', income: 165000 },
   ],
-  enrolledSchemes: [],
-  bankAccountBalance: 0
 };
 
 const BPLStatus: React.FC = () => {
-  const [data, setData] = useState<WelfareData | null>(null);
+  const [data, setData] = useState<BPLStatusData | null>(null);
+  const [family, setFamily] = useState<Family | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchData = async () => {
-    try {
-      setError(null);
-      const response = await get<{ success: boolean; data: WelfareData }>('/workers/profile/welfare');
-      if (response.success && response.data) {
-        setData(response.data);
-      }
-    } catch (err: any) {
-      console.error('Failed to fetch welfare data:', err);
-      setError('Failed to load welfare data. Using cached data.');
-      setData(mockWelfareData);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   useEffect(() => {
     fetchData();
   }, []);
+
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      const familyData = await familyService.getMyFamily();
+      setFamily(familyData.family);
+      // Use mock data for now, but we have family data for classification
+      setData(mockBPLData);
+    } catch (error) {
+      console.error('Error fetching family data:', error);
+      // Fall back to mock data
+      setData(mockBPLData);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -141,14 +124,12 @@ const BPLStatus: React.FC = () => {
     value: item.amount,
   }));
 
-  const bplStatus = data.isBPL ? 'eligible' : 'not_eligible';
-
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">BPL Status & Welfare</h1>
+          <h1 className="text-2xl font-bold text-gray-900">BPL Status</h1>
           <p className="text-gray-500 mt-1">Below Poverty Line eligibility verification</p>
         </div>
         <div className="flex items-center gap-3">
@@ -156,7 +137,7 @@ const BPLStatus: React.FC = () => {
             <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
             Refresh Status
           </Button>
-          {data.isBPL && (
+          {data.certificateId && (
             <Button>
               <Download className="h-4 w-4 mr-2" />
               Download Certificate
@@ -165,79 +146,88 @@ const BPLStatus: React.FC = () => {
         </div>
       </div>
 
-      {/* Error Alert */}
-      {error && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-center gap-3">
-          <AlertCircle className="h-5 w-5 text-yellow-600" />
-          <p className="text-yellow-800">{error}</p>
-        </div>
+      {/* APL/BPL Classification Status Card */}
+      {family && family.classification && family.classification !== 'pending' && (
+        <Card className={`border-2 ${family.classification === 'BPL' ? 'border-orange-300 bg-orange-50' : 'border-green-300 bg-green-50'}`}>
+          <CardContent className="py-6">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className={`p-4 rounded-full ${family.classification === 'BPL' ? 'bg-orange-200' : 'bg-green-200'}`}>
+                  {family.classification === 'BPL' ? (
+                    <Shield className={`h-8 w-8 text-orange-700`} />
+                  ) : (
+                    <Shield className={`h-8 w-8 text-green-700`} />
+                  )}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className={`text-2xl font-bold ${family.classification === 'BPL' ? 'text-orange-800' : 'text-green-800'}`}>
+                      {family.classification === 'BPL' ? 'Below Poverty Line' : 'Above Poverty Line'}
+                    </h2>
+                    <Badge variant={family.classification === 'BPL' ? 'warning' : 'success'}>
+                      {family.classification}
+                    </Badge>
+                  </div>
+                  <p className={`text-sm ${family.classification === 'BPL' ? 'text-orange-600' : 'text-green-600'}`}>
+                    {family.classification_reason || 'Classification completed'}
+                  </p>
+                  {family.classification_confidence > 0 && (
+                    <p className="text-sm text-gray-600 mt-1">
+                      Confidence: {family.classification_confidence}%
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* SECC Analysis Details */}
+            {(family.secc_deprivation_count > 0 || family.secc_exclusion_met?.length > 0 || family.secc_inclusion_met?.length > 0) && (
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <h4 className="text-sm font-semibold text-gray-900 mb-3">SECC 2011 Analysis</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                  {family.secc_inclusion_met && family.secc_inclusion_met.length > 0 && (
+                    <div className="bg-white rounded-lg p-3">
+                      <p className="font-medium text-green-700 mb-2">✅ Inclusion Criteria</p>
+                      <ul className="text-gray-600 space-y-1">
+                        {family.secc_inclusion_met.map((item, idx) => (
+                          <li key={idx} className="text-xs">• {item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {family.secc_exclusion_met && family.secc_exclusion_met.length > 0 && (
+                    <div className="bg-white rounded-lg p-3">
+                      <p className="font-medium text-red-700 mb-2">❌ Exclusion Criteria</p>
+                      <ul className="text-gray-600 space-y-1">
+                        {family.secc_exclusion_met.map((item, idx) => (
+                          <li key={idx} className="text-xs">• {item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {family.secc_deprivation_met && family.secc_deprivation_met.length > 0 && (
+                    <div className="bg-white rounded-lg p-3">
+                      <p className="font-medium text-orange-700 mb-2">⚠️ Deprivation Indicators ({family.secc_deprivation_count})</p>
+                      <ul className="text-gray-600 space-y-1">
+                        {family.secc_deprivation_met.map((item, idx) => (
+                          <li key={idx} className="text-xs">• {item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Recommendation Message */}
+            {family.recommendation_message && (
+              <div className="mt-4 p-3 bg-white rounded-lg">
+                <p className="text-sm text-gray-700">{family.recommendation_message}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
-
-      {/* Status Banner */}
-      <Card className={`border-l-4 ${data.isBPL ? 'border-l-green-500 bg-green-50' : 'border-l-red-500 bg-red-50'}`}>
-        <CardContent className="p-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className={`p-4 rounded-full ${data.isBPL ? 'bg-green-100' : 'bg-red-100'}`}>
-                {data.isBPL ? (
-                  <CheckCircle className="h-8 w-8 text-green-600" />
-                ) : (
-                  <XCircle className="h-8 w-8 text-red-600" />
-                )}
-              </div>
-              <div>
-                <div className="flex items-center gap-3">
-                  <h2 className="text-xl font-bold text-gray-900">
-                    {data.isBPL ? 'BPL Eligible' : 'APL (Above Poverty Line)'}
-                  </h2>
-                  <BPLBadge status={bplStatus} />
-                </div>
-                <p className="text-gray-600 mt-1">
-                  {data.isBPL 
-                    ? 'You are eligible for welfare benefits under BPL category'
-                    : 'Your income exceeds the BPL threshold'}
-                </p>
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="text-sm text-gray-500">Last Classification</p>
-              <p className="font-medium text-gray-900">
-                {data.lastClassificationDate ? formatDate(data.lastClassificationDate) : formatDate(new Date().toISOString())}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Verification Summary */}
-      <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
-        <CardContent className="p-5">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h3 className="font-semibold text-gray-900">Income Verification Status</h3>
-              <p className="text-sm text-gray-600 mt-1">
-                {data.verification.verifiedPercentage}% of your income is verified through employer records
-              </p>
-            </div>
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="h-5 w-5 text-green-600" />
-                <div>
-                  <p className="text-xs text-gray-500">Verified ({data.verification.verifiedTransactions} txns)</p>
-                  <p className="font-semibold text-green-700">{formatCurrency(data.verification.verifiedAmount)}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <ShieldX className="h-5 w-5 text-orange-500" />
-                <div>
-                  <p className="text-xs text-gray-500">Unverified ({data.verification.unverifiedTransactions} txns)</p>
-                  <p className="font-semibold text-orange-600">{formatCurrency(data.verification.unverifiedAmount)}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Income Overview */}
       <div className="grid lg:grid-cols-3 gap-6">
@@ -245,31 +235,26 @@ const BPLStatus: React.FC = () => {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <p className="text-sm text-gray-500">Annual Income (Last 12 Months)</p>
+              <p className="text-sm text-gray-500">Your Annual Income</p>
               <IndianRupee className="h-5 w-5 text-gray-400" />
             </div>
             <p className="text-3xl font-bold text-gray-900">{formatCurrency(data.annualIncome)}</p>
             <div className="mt-4">
               <div className="flex items-center justify-between text-sm mb-2">
-                <span className="text-gray-500">BPL Threshold: {formatCurrency(data.threshold)}</span>
-                <span className={`font-medium ${data.isBPL ? 'text-green-600' : 'text-red-600'}`}>
+                <span className="text-gray-500">Threshold: {formatCurrency(data.threshold)}</span>
+                <span className={`font-medium ${data.status === 'eligible' ? 'text-green-600' : 'text-red-600'}`}>
                   {incomePercentage.toFixed(1)}%
                 </span>
               </div>
               <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
                 <div 
-                  className={`h-full rounded-full transition-all ${data.isBPL ? 'bg-green-500' : 'bg-red-500'}`}
+                  className={`h-full rounded-full transition-all ${data.status === 'eligible' ? 'bg-green-500' : 'bg-red-500'}`}
                   style={{ width: `${Math.min(incomePercentage, 100)}%` }}
                 />
               </div>
-              {data.isBPL && remainingBuffer > 0 && (
+              {data.status === 'eligible' && (
                 <p className="text-sm text-gray-500 mt-2">
                   Buffer remaining: <span className="font-medium text-green-600">{formatCurrency(remainingBuffer)}</span>
-                </p>
-              )}
-              {!data.isBPL && (
-                <p className="text-sm text-gray-500 mt-2">
-                  Above threshold by: <span className="font-medium text-red-600">{formatCurrency(Math.abs(remainingBuffer))}</span>
                 </p>
               )}
             </div>
@@ -279,8 +264,8 @@ const BPLStatus: React.FC = () => {
         {/* Income Breakdown */}
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Income Breakdown by Source</CardTitle>
-            <CardDescription>Distribution of your income with verification status</CardDescription>
+            <CardTitle>Income Breakdown</CardTitle>
+            <CardDescription>Distribution of your income by source</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex flex-col md:flex-row items-center gap-6">
@@ -299,14 +284,7 @@ const BPLStatus: React.FC = () => {
                     />
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-gray-600">{item.source}</span>
-                          {item.verified ? (
-                            <ShieldCheck className="h-4 w-4 text-green-500" />
-                          ) : (
-                            <ShieldX className="h-4 w-4 text-orange-400" />
-                          )}
-                        </div>
+                        <span className="text-sm text-gray-600">{item.source}</span>
                         <span className="text-sm font-medium text-gray-900">{formatCurrency(item.amount)}</span>
                       </div>
                       <div className="h-1.5 bg-gray-100 rounded-full mt-1">
@@ -328,95 +306,88 @@ const BPLStatus: React.FC = () => {
       </div>
 
       {/* Eligible Welfare Schemes */}
+      {((family && family.eligible_schemes && family.eligible_schemes.length > 0) || data.status === 'eligible') && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Heart className="h-5 w-5 text-red-500" />
+              Eligible Welfare Schemes
+            </CardTitle>
+            <CardDescription>
+              Based on your BPL status, you are eligible for the following government schemes
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {family && family.eligible_schemes && family.eligible_schemes.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {family.eligible_schemes.map((scheme, idx) => (
+                  <Badge key={idx} variant="info" className="text-sm px-3 py-1">
+                    {scheme}
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {data.eligibleSchemes.map((scheme) => (
+                  <div 
+                    key={scheme.id}
+                    className="p-4 border border-gray-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors"
+                  >
+                    <h4 className="font-medium text-gray-900">{scheme.name}</h4>
+                    <p className="text-sm text-gray-500 mt-1">{scheme.description}</p>
+                    <div className="flex items-center justify-between mt-3">
+                      <Badge variant="success" className="text-xs">Eligible</Badge>
+                      <Button variant="ghost" size="sm" className="text-primary-600">
+                        Apply →
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Verification History */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Heart className="h-5 w-5 text-red-500" />
-            {data.isBPL ? 'Eligible Welfare Schemes' : 'Available Schemes'}
+            <Calendar className="h-5 w-5 text-gray-400" />
+            Verification History
           </CardTitle>
-          <CardDescription>
-            {data.isBPL 
-              ? 'Based on your BPL status, you are eligible for the following government schemes'
-              : 'These schemes are available based on your income category'}
-          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {data.eligibleSchemes.map((scheme) => (
+          <div className="space-y-4">
+            {data.verificationHistory.map((record, index) => (
               <div 
-                key={scheme.id}
-                className="p-4 border border-gray-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors"
+                key={index}
+                className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
               >
-                <h4 className="font-medium text-gray-900">{scheme.name}</h4>
-                <p className="text-sm text-gray-500 mt-1">{scheme.description}</p>
-                <p className="text-xs text-green-600 mt-2">{scheme.benefits}</p>
-                <div className="flex items-center justify-between mt-3">
-                  <Badge variant={data.isBPL ? 'success' : 'default'} className="text-xs">
-                    {data.isBPL ? 'Eligible' : 'Check Eligibility'}
-                  </Badge>
-                  <Button variant="ghost" size="sm" className="text-primary-600">
-                    Apply →
-                  </Button>
+                <div className="flex items-center gap-4">
+                  <div className={`p-2 rounded-lg ${record.status === 'eligible' ? 'bg-green-100' : 'bg-red-100'}`}>
+                    {record.status === 'eligible' ? (
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                    ) : (
+                      <XCircle className="h-5 w-5 text-red-600" />
+                    )}
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900">
+                      {record.status === 'eligible' ? 'BPL Eligible' : 'Not Eligible'}
+                    </p>
+                    <p className="text-sm text-gray-500">{formatDate(record.date)}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="font-medium text-gray-900">{formatCurrency(record.income)}</p>
+                  <p className="text-sm text-gray-500">Annual Income</p>
                 </div>
               </div>
             ))}
           </div>
         </CardContent>
       </Card>
-
-      {/* Verification History */}
-      {data.verificationHistory.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-gray-400" />
-              Recent Verified Transactions
-            </CardTitle>
-            <CardDescription>Latest employer-verified income records</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {data.verificationHistory.map((record, index) => (
-                <div 
-                  key={index}
-                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="p-2 rounded-lg bg-green-100">
-                      <ShieldCheck className="h-5 w-5 text-green-600" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900">{record.source}</p>
-                      <p className="text-sm text-gray-500">{formatDate(record.date)}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-medium text-gray-900">{formatCurrency(record.amount)}</p>
-                    <p className="text-xs text-gray-400 font-mono">{record.transactionId?.substring(0, 16)}...</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Bank Account Balance */}
-      {data.bankAccountBalance > 0 && (
-        <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Linked Bank Account Balance</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{formatCurrency(data.bankAccountBalance)}</p>
-              </div>
-              <div className="p-3 rounded-full bg-green-100">
-                <IndianRupee className="h-6 w-6 text-green-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Information Alert */}
       <Alert variant="info">

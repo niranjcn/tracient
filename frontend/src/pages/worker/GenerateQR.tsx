@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { ArrowRight, CreditCard, Copy, Check, AlertCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowRight, CreditCard, Copy, Check, AlertCircle, Send } from 'lucide-react';
 import { useWorkerBankAccounts } from '@/hooks/useWorkerBankAccounts';
 import { Button, Card, Alert } from '@/components/common';
 import { toast } from 'react-hot-toast';
@@ -17,6 +18,7 @@ interface QRGenerationResponse {
 
 export default function GenerateQRPage() {
   const { accounts, loading: accountsLoading } = useWorkerBankAccounts();
+  const navigate = useNavigate();
   
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
   const [qrToken, setQrToken] = useState<string | null>(null);
@@ -74,10 +76,21 @@ export default function GenerateQRPage() {
     <div className="container mx-auto px-4 py-8 max-w-6xl">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-gray-900 mb-2">Generate Payment QR Code</h1>
-        <p className="text-gray-600">
-          Select a bank account and generate a QR code for receiving payments
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-bold text-gray-900 mb-2">Generate Payment QR Code</h1>
+            <p className="text-gray-600">
+              Select a bank account and generate a QR code for receiving payments
+            </p>
+          </div>
+          <Button
+            onClick={() => navigate('/scan-qr')}
+            className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
+          >
+            <Send size={20} />
+            Pay Someone
+          </Button>
+        </div>
       </div>
 
       <div className="grid md:grid-cols-2 gap-8">

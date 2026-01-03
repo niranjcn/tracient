@@ -23,6 +23,7 @@ import {
 } from '@/components/common';
 import { showToast } from '@/components/common/Toast';
 import { useAuth } from '@/hooks/useAuth';
+import api from '@/services/api';
 
 const Profile: React.FC = () => {
   const { user } = useAuth();
@@ -52,29 +53,69 @@ const Profile: React.FC = () => {
 
   useEffect(() => {
     const fetchProfile = async () => {
-      await new Promise(resolve => setTimeout(resolve, 800));
-      setFormData({
-        companyName: user?.name || 'ABC Construction Pvt Ltd',
-        email: user?.email || 'admin@abcconstruction.com',
-        phone: '+91 11 2345 6789',
-        gstin: '29AABCU9603R1ZM',
-        registrationNumber: 'CIN1234567890',
-        contactPerson: 'Ramesh Kumar',
-        address: '123, Industrial Area, Phase 2',
-        city: 'Mumbai',
-        state: 'Maharashtra',
-        sector: 'Construction',
-      });
-      setIsLoading(false);
+      try {
+        setIsLoading(true);
+        const response = await api.get('/employers/profile') as any;
+        const employer = response.data?.employer;
+        
+        setFormData({
+          companyName: employer?.companyName || employer?.name || user?.name || '',
+          email: employer?.email || user?.email || '',
+          phone: employer?.phone || '',
+          gstin: employer?.gstin || '',
+          registrationNumber: employer?.registrationNumber || '',
+          contactPerson: employer?.contactPerson || '',
+          address: employer?.address?.street || '',
+          city: employer?.address?.city || '',
+          state: employer?.address?.state || '',
+          sector: employer?.businessType || employer?.sector || '',
+        });
+      } catch (error) {
+        console.error('Failed to fetch profile:', error);
+        // Use fallback data from user context
+        setFormData({
+          companyName: user?.name || '',
+          email: user?.email || '',
+          phone: '',
+          gstin: '',
+          registrationNumber: '',
+          contactPerson: '',
+          address: '',
+          city: '',
+          state: '',
+          sector: '',
+        });
+      } finally {
+        setIsLoading(false);
+      }
     };
     fetchProfile();
   }, [user]);
 
   const handleSave = async () => {
     setIsSaving(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    showToast.success('Profile updated successfully');
-    setIsSaving(false);
+    try {
+      const updateData = {
+        companyName: formData.companyName,
+        contactPerson: formData.contactPerson,
+        phone: formData.phone,
+        website: '',
+        gstin: formData.gstin,
+        businessType: formData.sector,
+        address: {
+          street: formData.address,
+          city: formData.city,
+          state: formData.state,
+        }
+      };
+      
+      await api.put('/employers/profile', updateData);
+      showToast.success('Profile updated successfully');
+    } catch (error: any) {
+      showToast.error(error.message || 'Failed to update profile');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const tabs = [

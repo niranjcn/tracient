@@ -25,6 +25,7 @@ const Welfare = React.lazy(() => import('./pages/worker/Welfare'));
 const WorkerProfile = React.lazy(() => import('./pages/worker/Profile'));
 const WorkerFamily = React.lazy(() => import('./pages/worker/Family'));
 const WorkerFamilySurvey = React.lazy(() => import('./pages/worker/FamilySurvey'));
+const WorkerUpdateFamily = React.lazy(() => import('./pages/worker/UpdateFamily'));
 const BankAccounts = React.lazy(() => import('./pages/worker/BankAccounts'));
 const GenerateQR = React.lazy(() => import('./pages/worker/GenerateQR'));
 const ScanQR = React.lazy(() => import('./pages/worker/ScanQR'));
@@ -37,6 +38,7 @@ const EmployerWorkers = React.lazy(() => import('./pages/employer/Workers'));
 const PaymentHistory = React.lazy(() => import('./pages/employer/PaymentHistory'));
 const EmployerFamily = React.lazy(() => import('./pages/employer/Family'));
 const EmployerFamilySurvey = React.lazy(() => import('./pages/employer/FamilySurvey'));
+const EmployerUpdateFamily = React.lazy(() => import('./pages/worker/UpdateFamily')); // Reuse worker component
 
 // Government Pages
 const GovDashboard = React.lazy(() => import('./pages/government/Dashboard'));
@@ -99,6 +101,7 @@ const App: React.FC = () => {
           <Route path="welfare" element={<Welfare />} />
           <Route path="family" element={<WorkerFamily />} />
           <Route path="family/survey" element={<WorkerFamilySurvey />} />
+          <Route path="family/update" element={<WorkerUpdateFamily />} />
           <Route path="bank-accounts" element={<BankAccounts />} />
           <Route path="generate-qr" element={<GenerateQR />} />
           <Route path="profile" element={<WorkerProfile />} />
@@ -123,6 +126,7 @@ const App: React.FC = () => {
           <Route path="workers" element={<EmployerWorkers />} />
           <Route path="family" element={<EmployerFamily />} />
           <Route path="family/survey" element={<EmployerFamilySurvey />} />
+          <Route path="family/update" element={<EmployerUpdateFamily />} />
           <Route path="payments" element={<PaymentHistory />} />
           <Route path="profile" element={<EmployerProfile />} />
         </Route>

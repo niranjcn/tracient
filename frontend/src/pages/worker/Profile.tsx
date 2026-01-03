@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { 
@@ -28,12 +28,14 @@ import {
   Avatar,
   Tabs,
   Alert,
-  Badge
+  Badge,
+  Spinner
 } from '@/components/common';
 import { showToast } from '@/components/common';
 import { formatDate } from '@/utils/formatters';
 import { maskAadhaar } from '@/utils/formatters';
 import { z } from 'zod';
+import api from '@/services/api';
 
 const profileSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -63,13 +65,15 @@ const Profile: React.FC = () => {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(true);
+  const [profileData, setProfileData] = useState<any>(null);
 
   const profileForm = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
-      name: user?.name || '',
-      email: user?.email || '',
-      phone: user?.phone || '',
+      name: '',
+      email: '',
+      phone: '',
       address: '',
       city: '',
       state: '',
@@ -81,13 +85,73 @@ const Profile: React.FC = () => {
     resolver: zodResolver(passwordSchema),
   });
 
-  const onProfileSubmit = async (_data: ProfileFormData) => {
+  // Fetch profile data on mount
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        setIsFetching(true);
+        const response = await api.get('/workers/profile') as any;
+        const data = response.data;
+        setProfileData(data);
+        
+        // Update form with fetched data
+        const firstName = data.personalInfo?.firstName || '';
+        const lastName = data.personalInfo?.lastName || '';
+        const fullName = `${firstName} ${lastName}`.trim();
+        
+        profileForm.reset({
+          name: fullName || user?.name || '',
+          email: data.personalInfo?.email || user?.email || '',
+          phone: data.personalInfo?.phone || '',
+          address: data.addressInfo?.street || '',
+          city: data.addressInfo?.city || '',
+          state: data.addressInfo?.state || '',
+          pincode: data.addressInfo?.postalCode || '',
+        });
+      } catch (error) {
+        console.error('Failed to fetch profile:', error);
+        // If API fails, use user data from auth
+        profileForm.reset({
+          name: user?.name || '',
+          email: user?.email || '',
+          phone: '',
+          address: '',
+          city: '',
+          state: '',
+          pincode: '',
+        });
+      } finally {
+        setIsFetching(false);
+      }
+    };
+
+    fetchProfile();
+  }, [user]);
+
+  const onProfileSubmit = async (data: ProfileFormData) => {
     setIsLoading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const [firstName, ...lastNameParts] = data.name.split(' ');
+      const lastName = lastNameParts.join(' ');
+      
+      const updateData = {
+        personalInfo: {
+          firstName: firstName || '',
+          lastName: lastName || '',
+          phone: data.phone,
+        },
+        addressInfo: {
+          street: data.address || '',
+          city: data.city || '',
+          state: data.state || '',
+          postalCode: data.pincode || '',
+        }
+      };
+      
+      await api.put('/workers/profile', updateData);
       showToast.success('Profile updated successfully');
-    } catch (error) {
-      showToast.error('Failed to update profile');
+    } catch (error: any) {
+      showToast.error(error.message || 'Failed to update profile');
     } finally {
       setIsLoading(false);
     }
@@ -120,6 +184,14 @@ const Profile: React.FC = () => {
     { value: 'telangana', label: 'Telangana' },
     { value: 'maharashtra', label: 'Maharashtra' },
   ];
+
+  if (isFetching) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -204,7 +276,11 @@ const Profile: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Aadhaar Number</label>
                   <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
                     <CreditCard className="h-5 w-5 text-gray-400" />
-                    <span className="font-mono text-gray-600">{maskAadhaar('123456789012')}</span>
+                    <span className="font-mono text-gray-600">
+                      {profileData?.personalInfo?.aadhaarLast4 
+                        ? maskAadhaar(`XXXX XXXX ${profileData.personalInfo.aadhaarLast4}`)
+                        : maskAadhaar('XXXXXXXXXXXX')}
+                    </span>
                     <Badge variant="success" className="ml-auto">Verified</Badge>
                   </div>
                 </div>

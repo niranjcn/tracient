@@ -13,7 +13,9 @@ import {
   Loader2,
   Shield,
   AlertTriangle,
-  Award
+  Award,
+  Edit,
+  UserPlus
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, Button, Badge, Spinner } from '@/components/common';
 import { familyService } from '@/services';
@@ -29,6 +31,9 @@ const FamilyPage: React.FC = () => {
   const [family, setFamily] = useState<Family | null>(null);
   const [members, setMembers] = useState<FamilyMember[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [requiresUpdate, setRequiresUpdate] = useState(false);
+  const [actualMemberCount, setActualMemberCount] = useState(0);
+  const [autoUpdated, setAutoUpdated] = useState(false);
 
   useEffect(() => {
     fetchFamilyData();
@@ -42,6 +47,24 @@ const FamilyPage: React.FC = () => {
       console.log('📊 Family data received:', data);
       setFamily(data.family);
       setMembers(data.members || []);
+      
+      // Check if family needs updating
+      const status = await familyService.checkSurveyStatus();
+      console.log('📋 Survey status:', status);
+      setRequiresUpdate(status.requiresUpdate || false);
+      setActualMemberCount(status.actualMemberCount || 0);
+      setAutoUpdated(status.autoUpdated || false);
+      
+      // If status says requires update or family object has flag set, show prompt
+      if (data.family?.requires_update || status.requiresUpdate) {
+        setRequiresUpdate(true);
+      }
+      
+      if (status.autoUpdated) {
+        // Refresh to get updated family size
+        const updatedData = await familyService.getMyFamily();
+        setFamily(updatedData.family);
+      }
     } catch (err) {
       console.error('❌ Error fetching family:', err);
       setError(err instanceof Error ? err.message : 'Failed to load family data');
@@ -68,6 +91,12 @@ const FamilyPage: React.FC = () => {
 
   const handleStartSurvey = () => {
     navigate(user?.role === 'worker' ? '/worker/family/survey' : '/employer/family/survey');
+  };
+  
+  const handleUpdateFamily = () => {
+    navigate(user?.role === 'worker' ? '/worker/family/update' : '/employer/family/update', {
+      state: { family, requiresUpdate, actualMemberCount }
+    });
   };
 
   if (isLoading) {
@@ -154,121 +183,61 @@ const FamilyPage: React.FC = () => {
           <h1 className="text-2xl font-bold text-gray-900">Family Information</h1>
           <p className="text-gray-600 mt-1">Ration Card: {family.ration_no}</p>
         </div>
-        <Badge variant="success" className="gap-2">
-          <CheckCircle2 className="h-4 w-4" />
-          Survey Completed
-        </Badge>
+        <div className="flex items-center gap-3">
+          <Button 
+            onClick={handleUpdateFamily} 
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <Edit className="h-4 w-4" />
+            Update Family
+          </Button>
+          <Badge variant="success" className="gap-2">
+            <CheckCircle2 className="h-4 w-4" />
+            Survey Completed
+          </Badge>
+        </div>
       </div>
 
-      {/* APL/BPL Classification Status Card */}
-      {family.classification && family.classification !== 'pending' && (
-        <Card className={`border-2 ${family.classification === 'BPL' ? 'border-orange-300 bg-orange-50' : 'border-green-300 bg-green-50'}`}>
+      {/* New Member Detection Alert */}
+      {requiresUpdate && (
+        <Card className="border-2 border-blue-300 bg-blue-50">
           <CardContent className="py-6">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className={`p-4 rounded-full ${family.classification === 'BPL' ? 'bg-orange-200' : 'bg-green-200'}`}>
-                  {family.classification === 'BPL' ? (
-                    <AlertTriangle className={`h-8 w-8 text-orange-700`} />
+            <div className="flex items-start gap-4">
+              <div className="p-3 rounded-full bg-blue-200">
+                <UserPlus className="h-6 w-6 text-blue-700" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-blue-900 mb-2">
+                  {autoUpdated ? 'New Family Member Detected!' : 'Family Update Required'}
+                </h3>
+                <p className="text-sm text-blue-800 mb-3">
+                  {autoUpdated ? (
+                    <>
+                      We've detected that {actualMemberCount} user(s) now share your ration number, 
+                      but your family survey showed only {family.family_size} member(s). 
+                      We've automatically updated the family size to {actualMemberCount}.
+                    </>
                   ) : (
-                    <Shield className={`h-8 w-8 text-green-700`} />
+                    <>
+                      Your family demographics need to be updated to reflect recent changes. 
+                      This ensures accurate welfare benefit calculations.
+                    </>
                   )}
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className={`text-2xl font-bold ${family.classification === 'BPL' ? 'text-orange-800' : 'text-green-800'}`}>
-                      {family.classification === 'BPL' ? 'Below Poverty Line' : 'Above Poverty Line'}
-                    </h2>
-                    <Badge variant={family.classification === 'BPL' ? 'warning' : 'success'}>
-                      {family.classification}
-                    </Badge>
-                  </div>
-                  <p className={`text-sm ${family.classification === 'BPL' ? 'text-orange-600' : 'text-green-600'}`}>
-                    {family.classification_reason || 'Classification completed'}
-                  </p>
-                  {family.classification_confidence > 0 && (
-                    <p className="text-sm text-gray-600 mt-1">
-                      Confidence: {family.classification_confidence}%
-                    </p>
-                  )}
-                </div>
+                </p>
+                <p className="text-sm text-blue-800 mb-4">
+                  Please update your family demographics to reflect the current household composition 
+                  for accurate welfare benefit calculations.
+                </p>
+                <Button 
+                  onClick={handleUpdateFamily}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Update Family Details Now
+                </Button>
               </div>
-              
-              {family.recommendation_priority && (
-                <div className={`px-4 py-2 rounded-lg ${
-                  family.recommendation_priority === 'HIGH' ? 'bg-red-100 text-red-800' :
-                  family.recommendation_priority === 'MEDIUM' ? 'bg-orange-100 text-orange-800' :
-                  'bg-green-100 text-green-800'
-                }`}>
-                  <div className="flex items-center gap-2">
-                    <Award className="h-5 w-5" />
-                    <span className="font-semibold">{family.recommendation_priority} Priority</span>
-                  </div>
-                </div>
-              )}
             </div>
-
-            {/* SECC Analysis Details */}
-            {(family.secc_deprivation_count > 0 || family.secc_exclusion_met?.length > 0 || family.secc_inclusion_met?.length > 0) && (
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <h4 className="text-sm font-semibold text-gray-900 mb-3">SECC 2011 Analysis</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                  {family.secc_inclusion_met && family.secc_inclusion_met.length > 0 && (
-                    <div className="bg-white rounded-lg p-3">
-                      <p className="font-medium text-green-700 mb-2">✅ Inclusion Criteria</p>
-                      <ul className="text-gray-600 space-y-1">
-                        {family.secc_inclusion_met.map((item, idx) => (
-                          <li key={idx} className="text-xs">• {item}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {family.secc_exclusion_met && family.secc_exclusion_met.length > 0 && (
-                    <div className="bg-white rounded-lg p-3">
-                      <p className="font-medium text-red-700 mb-2">❌ Exclusion Criteria</p>
-                      <ul className="text-gray-600 space-y-1">
-                        {family.secc_exclusion_met.map((item, idx) => (
-                          <li key={idx} className="text-xs">• {item}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {family.secc_deprivation_met && family.secc_deprivation_met.length > 0 && (
-                    <div className="bg-white rounded-lg p-3">
-                      <p className="font-medium text-orange-700 mb-2">⚠️ Deprivation Indicators ({family.secc_deprivation_count})</p>
-                      <ul className="text-gray-600 space-y-1">
-                        {family.secc_deprivation_met.map((item, idx) => (
-                          <li key={idx} className="text-xs">• {item}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Eligible Schemes */}
-            {family.eligible_schemes && family.eligible_schemes.length > 0 && (
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <Heart className="h-4 w-4 text-blue-500" />
-                  Eligible Welfare Schemes
-                </h4>
-                <div className="flex flex-wrap gap-2">
-                  {family.eligible_schemes.map((scheme, idx) => (
-                    <Badge key={idx} variant="info" className="text-xs">
-                      {scheme}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Recommendation Message */}
-            {family.recommendation_message && (
-              <div className="mt-4 p-3 bg-white rounded-lg">
-                <p className="text-sm text-gray-700">{family.recommendation_message}</p>
-              </div>
-            )}
           </CardContent>
         </Card>
       )}
@@ -473,7 +442,7 @@ const FamilyPage: React.FC = () => {
       </div>
 
       {/* Land & Agriculture */}
-      {(family.total_land_acres > 0 || family.kcc_limit > 0) && (
+      {family.total_land_acres > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -482,7 +451,7 @@ const FamilyPage: React.FC = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
               <div>
                 <p className="text-sm text-gray-600">Total Land</p>
                 <p className="text-xl font-bold text-gray-900">{family.total_land_acres} acres</p>
@@ -494,10 +463,6 @@ const FamilyPage: React.FC = () => {
               <div>
                 <p className="text-sm text-gray-600">Crop Seasons</p>
                 <p className="text-xl font-bold text-gray-900">{family.crop_seasons}/year</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">KCC Limit</p>
-                <p className="text-xl font-bold text-gray-900">{formatCurrency(family.kcc_limit)}</p>
               </div>
             </div>
           </CardContent>

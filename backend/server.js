@@ -15,6 +15,7 @@ dotenv.config();
 
 import { connectDB } from './config/database.js';
 import { initFabricGateway } from './config/fabric.js';
+import { startScheduledJobs, stopScheduledJobs } from './jobs/scheduler.js';
 import routes from './routes/index.js';
 import { errorHandler, notFoundHandler } from './middleware/error.middleware.js';
 import { requestLogger } from './middleware/logger.middleware.js';
@@ -143,8 +144,15 @@ const startServer = async () => {
 ║  • Wages:      POST /api/wages                                   ║
 ║  • UPI:        POST /api/upi/generate-qr                         ║
 ║  • Government: GET  /api/government/dashboard                    ║
+║  • Family Sync: POST /api/family/sync/all (Admin/Gov)            ║
+╠══════════════════════════════════════════════════════════════════╣
+║  Scheduled Jobs: ✓ Started                                       ║
+║  • Daily Family Sync: 2:00 AM IST                                ║
 ╚══════════════════════════════════════════════════════════════════╝
       `);
+      
+      // Start scheduled background jobs
+      startScheduledJobs();
     });
   } catch (error) {
     console.error('CRITICAL ERROR:', error);
@@ -168,11 +176,13 @@ process.on('unhandledRejection', (reason, promise) => {
 // Graceful shutdown
 process.on('SIGTERM', () => {
   logger.info('SIGTERM received. Shutting down gracefully...');
+  stopScheduledJobs();
   process.exit(0);
 });
 
 process.on('SIGINT', () => {
   logger.info('SIGINT received. Shutting down gracefully...');
+  stopScheduledJobs();
   process.exit(0);
 });
 

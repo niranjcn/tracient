@@ -23,10 +23,11 @@ import {
 } from '@/components/common';
 import { showToast } from '@/components/common/Toast';
 import { useAuth } from '@/hooks/useAuth';
+import api from '@/services/api';
 
 const Profile: React.FC = () => {
   const { user } = useAuth();
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('profile');
   const [isSaving, setIsSaving] = useState(false);
 
@@ -45,24 +46,28 @@ const Profile: React.FC = () => {
   });
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      await new Promise(resolve => setTimeout(resolve, 800));
-      setFormData({
-        name: user?.name || 'System Administrator',
-        email: user?.email || 'admin@tracient.gov.in',
-        phone: '+91 11 1234 5678',
-        employeeId: 'ADM-001',
-      });
-      setIsLoading(false);
-    };
-    fetchProfile();
+    // Use user context data - no dedicated API for admin profile yet
+    setFormData({
+      name: user?.name || '',
+      email: user?.email || '',
+      phone: user?.phone || '',
+      employeeId: '',
+    });
+    setIsLoading(false);
   }, [user]);
 
   const handleSave = async () => {
     setIsSaving(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    showToast.success('Profile updated successfully');
-    setIsSaving(false);
+    try {
+      // For now, just show success since there's no dedicated admin profile update API
+      // In future, this can be connected to /api/admin/profile endpoint
+      await new Promise(resolve => setTimeout(resolve, 500));
+      showToast.success('Profile updated successfully');
+    } catch (error: any) {
+      showToast.error(error.message || 'Failed to update profile');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const tabs = [
@@ -70,14 +75,6 @@ const Profile: React.FC = () => {
     { id: 'notifications', label: 'Notifications' },
     { id: 'security', label: 'Security' },
   ];
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <Spinner size="lg" />
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">

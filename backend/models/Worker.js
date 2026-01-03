@@ -179,6 +179,20 @@ const workerSchema = new mongoose.Schema({
   lastClassificationDate: Date,
   
   // Employment
+  employmentType: {
+    type: String,
+    enum: ['formal', 'informal'],
+    default: 'informal'
+  },
+  isFarmer: {
+    type: Boolean,
+    default: false
+  },
+  kccLimit: {
+    type: Number,
+    min: 0,
+    default: 0
+  },
   currentEmployerId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Employer'
