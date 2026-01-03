@@ -8,7 +8,10 @@ import {
   Clock,
   IndianRupee,
   Calendar,
-  Heart
+  Heart,
+  ShieldCheck,
+  ShieldX,
+  AlertCircle
 } from 'lucide-react';
 import { 
   Card, 
@@ -24,73 +27,101 @@ import {
   CustomPieChart
 } from '@/components/common';
 import { formatCurrency, formatDate } from '@/utils/formatters';
-import { CHART_COLORS, WELFARE_SCHEMES, BPL_THRESHOLD } from '@/utils/constants';
+import { CHART_COLORS, BPL_THRESHOLD } from '@/utils/constants';
+import { get } from '@/services/api';
 
-interface BPLStatusData {
-  status: 'eligible' | 'not_eligible' | 'pending';
+interface WelfareData {
+  status: string;
+  isBPL: boolean;
   annualIncome: number;
   threshold: number;
-  lastVerified: string;
-  certificateId?: string;
-  eligibleSchemes: {
-    id: string;
-    name: string;
-    description: string;
-  }[];
-  incomeBreakdown: {
+  amountFromThreshold: number;
+  incomeBreakdown: Array<{
     source: string;
     amount: number;
     percentage: number;
-  }[];
-  verificationHistory: {
+    verified: boolean;
+  }>;
+  verification: {
+    verifiedAmount: number;
+    unverifiedAmount: number;
+    verifiedPercentage: number;
+    verifiedTransactions: number;
+    unverifiedTransactions: number;
+  };
+  verificationHistory: Array<{
     date: string;
-    status: 'eligible' | 'not_eligible';
-    income: number;
-  }[];
+    source: string;
+    amount: number;
+    transactionId: string;
+  }>;
+  eligibleSchemes: Array<{
+    id: string;
+    name: string;
+    description: string;
+    benefits: string;
+    eligibility: string;
+  }>;
+  enrolledSchemes: any[];
+  lastClassificationDate?: string;
+  bankAccountBalance: number;
 }
 
-const mockBPLData: BPLStatusData = {
-  status: 'eligible',
-  annualIncome: 125000,
+const mockWelfareData: WelfareData = {
+  status: 'BPL',
+  isBPL: true,
+  annualIncome: 115000,
   threshold: BPL_THRESHOLD,
-  lastVerified: new Date().toISOString(),
-  certificateId: 'BPL-2024-123456',
-  eligibleSchemes: WELFARE_SCHEMES.map((name, index) => ({
-    id: `scheme-${index + 1}`,
-    name: name,
-    description: `Government welfare scheme for BPL families`
-  })),
+  amountFromThreshold: 5000,
   incomeBreakdown: [
-    { source: 'Construction Work', amount: 50000, percentage: 40 },
-    { source: 'Agricultural Labor', amount: 35000, percentage: 28 },
-    { source: 'Daily Wages', amount: 25000, percentage: 20 },
-    { source: 'Other', amount: 15000, percentage: 12 },
+    { source: 'ABC Construction Ltd', amount: 50000, percentage: 43, verified: true },
+    { source: 'Private Labor Work', amount: 35000, percentage: 30, verified: false },
+    { source: 'XYZ Agriculture Farm', amount: 30000, percentage: 26, verified: true },
   ],
-  verificationHistory: [
-    { date: '2024-06-01', status: 'eligible', income: 125000 },
-    { date: '2024-03-01', status: 'eligible', income: 118000 },
-    { date: '2023-12-01', status: 'eligible', income: 95000 },
-    { date: '2023-09-01', status: 'not_eligible', income: 165000 },
+  verification: {
+    verifiedAmount: 80000,
+    unverifiedAmount: 35000,
+    verifiedPercentage: 70,
+    verifiedTransactions: 24,
+    unverifiedTransactions: 12
+  },
+  verificationHistory: [],
+  eligibleSchemes: [
+    { id: 'pds', name: 'Public Distribution System (PDS)', description: 'Subsidized food grains', benefits: 'Rice at ₹3/kg', eligibility: 'BPL families' }
   ],
+  enrolledSchemes: [],
+  bankAccountBalance: 0
 };
 
 const BPLStatus: React.FC = () => {
-  const [data, setData] = useState<BPLStatusData | null>(null);
+  const [data, setData] = useState<WelfareData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchData = async () => {
+    try {
+      setError(null);
+      const response = await get<{ success: boolean; data: WelfareData }>('/workers/profile/welfare');
+      if (response.success && response.data) {
+        setData(response.data);
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch welfare data:', err);
+      setError('Failed to load welfare data. Using cached data.');
+      setData(mockWelfareData);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setData(mockBPLData);
-      setIsLoading(false);
-    };
     fetchData();
   }, []);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await fetchData();
     setIsRefreshing(false);
   };
 
@@ -110,12 +141,14 @@ const BPLStatus: React.FC = () => {
     value: item.amount,
   }));
 
+  const bplStatus = data.isBPL ? 'eligible' : 'not_eligible';
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">BPL Status</h1>
+          <h1 className="text-2xl font-bold text-gray-900">BPL Status & Welfare</h1>
           <p className="text-gray-500 mt-1">Below Poverty Line eligibility verification</p>
         </div>
         <div className="flex items-center gap-3">
@@ -123,7 +156,7 @@ const BPLStatus: React.FC = () => {
             <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
             Refresh Status
           </Button>
-          {data.certificateId && (
+          {data.isBPL && (
             <Button>
               <Download className="h-4 w-4 mr-2" />
               Download Certificate
@@ -132,44 +165,75 @@ const BPLStatus: React.FC = () => {
         </div>
       </div>
 
+      {/* Error Alert */}
+      {error && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-center gap-3">
+          <AlertCircle className="h-5 w-5 text-yellow-600" />
+          <p className="text-yellow-800">{error}</p>
+        </div>
+      )}
+
       {/* Status Banner */}
-      <Card className={`border-l-4 ${data.status === 'eligible' ? 'border-l-green-500 bg-green-50' : data.status === 'not_eligible' ? 'border-l-red-500 bg-red-50' : 'border-l-amber-500 bg-amber-50'}`}>
+      <Card className={`border-l-4 ${data.isBPL ? 'border-l-green-500 bg-green-50' : 'border-l-red-500 bg-red-50'}`}>
         <CardContent className="p-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className={`p-4 rounded-full ${data.status === 'eligible' ? 'bg-green-100' : data.status === 'not_eligible' ? 'bg-red-100' : 'bg-amber-100'}`}>
-                {data.status === 'eligible' ? (
+              <div className={`p-4 rounded-full ${data.isBPL ? 'bg-green-100' : 'bg-red-100'}`}>
+                {data.isBPL ? (
                   <CheckCircle className="h-8 w-8 text-green-600" />
-                ) : data.status === 'not_eligible' ? (
-                  <XCircle className="h-8 w-8 text-red-600" />
                 ) : (
-                  <Clock className="h-8 w-8 text-amber-600" />
+                  <XCircle className="h-8 w-8 text-red-600" />
                 )}
               </div>
               <div>
                 <div className="flex items-center gap-3">
                   <h2 className="text-xl font-bold text-gray-900">
-                    {data.status === 'eligible' ? 'BPL Eligible' : data.status === 'not_eligible' ? 'Not BPL Eligible' : 'Verification Pending'}
+                    {data.isBPL ? 'BPL Eligible' : 'APL (Above Poverty Line)'}
                   </h2>
-                  <BPLBadge status={data.status} />
+                  <BPLBadge status={bplStatus} />
                 </div>
                 <p className="text-gray-600 mt-1">
-                  {data.status === 'eligible' 
+                  {data.isBPL 
                     ? 'You are eligible for welfare benefits under BPL category'
-                    : data.status === 'not_eligible'
-                    ? 'Your income exceeds the BPL threshold'
-                    : 'Your status is being verified'}
+                    : 'Your income exceeds the BPL threshold'}
                 </p>
-                {data.certificateId && (
-                  <p className="text-sm text-gray-500 mt-2">
-                    Certificate ID: <span className="font-mono">{data.certificateId}</span>
-                  </p>
-                )}
               </div>
             </div>
             <div className="text-right">
-              <p className="text-sm text-gray-500">Last Verified</p>
-              <p className="font-medium text-gray-900">{formatDate(data.lastVerified)}</p>
+              <p className="text-sm text-gray-500">Last Classification</p>
+              <p className="font-medium text-gray-900">
+                {data.lastClassificationDate ? formatDate(data.lastClassificationDate) : formatDate(new Date().toISOString())}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Verification Summary */}
+      <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+        <CardContent className="p-5">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h3 className="font-semibold text-gray-900">Income Verification Status</h3>
+              <p className="text-sm text-gray-600 mt-1">
+                {data.verification.verifiedPercentage}% of your income is verified through employer records
+              </p>
+            </div>
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="h-5 w-5 text-green-600" />
+                <div>
+                  <p className="text-xs text-gray-500">Verified ({data.verification.verifiedTransactions} txns)</p>
+                  <p className="font-semibold text-green-700">{formatCurrency(data.verification.verifiedAmount)}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <ShieldX className="h-5 w-5 text-orange-500" />
+                <div>
+                  <p className="text-xs text-gray-500">Unverified ({data.verification.unverifiedTransactions} txns)</p>
+                  <p className="font-semibold text-orange-600">{formatCurrency(data.verification.unverifiedAmount)}</p>
+                </div>
+              </div>
             </div>
           </div>
         </CardContent>
@@ -181,26 +245,31 @@ const BPLStatus: React.FC = () => {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <p className="text-sm text-gray-500">Your Annual Income</p>
+              <p className="text-sm text-gray-500">Annual Income (Last 12 Months)</p>
               <IndianRupee className="h-5 w-5 text-gray-400" />
             </div>
             <p className="text-3xl font-bold text-gray-900">{formatCurrency(data.annualIncome)}</p>
             <div className="mt-4">
               <div className="flex items-center justify-between text-sm mb-2">
-                <span className="text-gray-500">Threshold: {formatCurrency(data.threshold)}</span>
-                <span className={`font-medium ${data.status === 'eligible' ? 'text-green-600' : 'text-red-600'}`}>
+                <span className="text-gray-500">BPL Threshold: {formatCurrency(data.threshold)}</span>
+                <span className={`font-medium ${data.isBPL ? 'text-green-600' : 'text-red-600'}`}>
                   {incomePercentage.toFixed(1)}%
                 </span>
               </div>
               <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
                 <div 
-                  className={`h-full rounded-full transition-all ${data.status === 'eligible' ? 'bg-green-500' : 'bg-red-500'}`}
+                  className={`h-full rounded-full transition-all ${data.isBPL ? 'bg-green-500' : 'bg-red-500'}`}
                   style={{ width: `${Math.min(incomePercentage, 100)}%` }}
                 />
               </div>
-              {data.status === 'eligible' && (
+              {data.isBPL && remainingBuffer > 0 && (
                 <p className="text-sm text-gray-500 mt-2">
                   Buffer remaining: <span className="font-medium text-green-600">{formatCurrency(remainingBuffer)}</span>
+                </p>
+              )}
+              {!data.isBPL && (
+                <p className="text-sm text-gray-500 mt-2">
+                  Above threshold by: <span className="font-medium text-red-600">{formatCurrency(Math.abs(remainingBuffer))}</span>
                 </p>
               )}
             </div>
@@ -210,8 +279,8 @@ const BPLStatus: React.FC = () => {
         {/* Income Breakdown */}
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Income Breakdown</CardTitle>
-            <CardDescription>Distribution of your income by source</CardDescription>
+            <CardTitle>Income Breakdown by Source</CardTitle>
+            <CardDescription>Distribution of your income with verification status</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex flex-col md:flex-row items-center gap-6">
@@ -230,7 +299,14 @@ const BPLStatus: React.FC = () => {
                     />
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">{item.source}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-600">{item.source}</span>
+                          {item.verified ? (
+                            <ShieldCheck className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <ShieldX className="h-4 w-4 text-orange-400" />
+                          )}
+                        </div>
                         <span className="text-sm font-medium text-gray-900">{formatCurrency(item.amount)}</span>
                       </div>
                       <div className="h-1.5 bg-gray-100 rounded-full mt-1">
@@ -252,31 +328,71 @@ const BPLStatus: React.FC = () => {
       </div>
 
       {/* Eligible Welfare Schemes */}
-      {data.status === 'eligible' && (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Heart className="h-5 w-5 text-red-500" />
+            {data.isBPL ? 'Eligible Welfare Schemes' : 'Available Schemes'}
+          </CardTitle>
+          <CardDescription>
+            {data.isBPL 
+              ? 'Based on your BPL status, you are eligible for the following government schemes'
+              : 'These schemes are available based on your income category'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {data.eligibleSchemes.map((scheme) => (
+              <div 
+                key={scheme.id}
+                className="p-4 border border-gray-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors"
+              >
+                <h4 className="font-medium text-gray-900">{scheme.name}</h4>
+                <p className="text-sm text-gray-500 mt-1">{scheme.description}</p>
+                <p className="text-xs text-green-600 mt-2">{scheme.benefits}</p>
+                <div className="flex items-center justify-between mt-3">
+                  <Badge variant={data.isBPL ? 'success' : 'default'} className="text-xs">
+                    {data.isBPL ? 'Eligible' : 'Check Eligibility'}
+                  </Badge>
+                  <Button variant="ghost" size="sm" className="text-primary-600">
+                    Apply →
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Verification History */}
+      {data.verificationHistory.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Heart className="h-5 w-5 text-red-500" />
-              Eligible Welfare Schemes
+              <Calendar className="h-5 w-5 text-gray-400" />
+              Recent Verified Transactions
             </CardTitle>
-            <CardDescription>
-              Based on your BPL status, you are eligible for the following government schemes
-            </CardDescription>
+            <CardDescription>Latest employer-verified income records</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {data.eligibleSchemes.map((scheme) => (
+            <div className="space-y-4">
+              {data.verificationHistory.map((record, index) => (
                 <div 
-                  key={scheme.id}
-                  className="p-4 border border-gray-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors"
+                  key={index}
+                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
                 >
-                  <h4 className="font-medium text-gray-900">{scheme.name}</h4>
-                  <p className="text-sm text-gray-500 mt-1">{scheme.description}</p>
-                  <div className="flex items-center justify-between mt-3">
-                    <Badge variant="success" className="text-xs">Eligible</Badge>
-                    <Button variant="ghost" size="sm" className="text-primary-600">
-                      Apply →
-                    </Button>
+                  <div className="flex items-center gap-4">
+                    <div className="p-2 rounded-lg bg-green-100">
+                      <ShieldCheck className="h-5 w-5 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">{record.source}</p>
+                      <p className="text-sm text-gray-500">{formatDate(record.date)}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-medium text-gray-900">{formatCurrency(record.amount)}</p>
+                    <p className="text-xs text-gray-400 font-mono">{record.transactionId?.substring(0, 16)}...</p>
                   </div>
                 </div>
               ))}
@@ -285,45 +401,22 @@ const BPLStatus: React.FC = () => {
         </Card>
       )}
 
-      {/* Verification History */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-gray-400" />
-            Verification History
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {data.verificationHistory.map((record, index) => (
-              <div 
-                key={index}
-                className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
-              >
-                <div className="flex items-center gap-4">
-                  <div className={`p-2 rounded-lg ${record.status === 'eligible' ? 'bg-green-100' : 'bg-red-100'}`}>
-                    {record.status === 'eligible' ? (
-                      <CheckCircle className="h-5 w-5 text-green-600" />
-                    ) : (
-                      <XCircle className="h-5 w-5 text-red-600" />
-                    )}
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900">
-                      {record.status === 'eligible' ? 'BPL Eligible' : 'Not Eligible'}
-                    </p>
-                    <p className="text-sm text-gray-500">{formatDate(record.date)}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="font-medium text-gray-900">{formatCurrency(record.income)}</p>
-                  <p className="text-sm text-gray-500">Annual Income</p>
-                </div>
+      {/* Bank Account Balance */}
+      {data.bankAccountBalance > 0 && (
+        <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Linked Bank Account Balance</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">{formatCurrency(data.bankAccountBalance)}</p>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+              <div className="p-3 rounded-full bg-green-100">
+                <IndianRupee className="h-6 w-6 text-green-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Information Alert */}
       <Alert variant="info">

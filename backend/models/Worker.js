@@ -163,6 +163,10 @@ const workerSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  monthlyAverage: {
+    type: Number,
+    default: 0
+  },
   incomeCategory: {
     type: String,
     enum: Object.values(INCOME_CATEGORIES),

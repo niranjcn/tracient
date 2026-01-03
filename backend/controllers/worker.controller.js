@@ -1146,6 +1146,268 @@ export const depositViaQR = async (req, res) => {
   }
 };
 
+/**
+ * Get worker dashboard data
+ * Returns total earnings, monthly income, income by source, recent wages
+ */
+export const getMyDashboard = async (req, res) => {
+  try {
+    const worker = await Worker.findOne({ userId: req.user.id });
+    
+    if (!worker) {
+      return notFoundResponse(res, 'Worker profile not found');
+    }
+
+    // Get all wage records for this worker
+    const wageRecords = await WageRecord.find({
+      workerId: worker._id,
+      status: 'completed'
+    }).populate('employerId', 'companyName').sort({ createdAt: -1 });
+
+    // Calculate total earnings
+    const totalEarnings = wageRecords.reduce((sum, w) => sum + w.amount, 0);
+    
+    // Calculate monthly average
+    const uniqueMonths = new Set(wageRecords.map(w => {
+      const d = new Date(w.createdAt);
+      return `${d.getFullYear()}-${d.getMonth()}`;
+    }));
+    const monthlyAverage = uniqueMonths.size > 0 ? Math.round(totalEarnings / uniqueMonths.size) : 0;
+
+    // Get last payment
+    const lastPayment = wageRecords.length > 0 ? {
+      amount: wageRecords[0].amount,
+      date: wageRecords[0].createdAt,
+      source: wageRecords[0].employerId?.companyName || wageRecords[0].incomeSource || 'Unknown'
+    } : null;
+
+    // Monthly income for the last 12 months
+    const now = new Date();
+    const monthlyIncome = [];
+    for (let i = 11; i >= 0; i--) {
+      const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59);
+      const monthName = monthDate.toLocaleDateString('en-US', { month: 'short' });
+      
+      const monthTotal = wageRecords
+        .filter(w => {
+          const d = new Date(w.createdAt);
+          return d >= monthDate && d <= monthEnd;
+        })
+        .reduce((sum, w) => sum + w.amount, 0);
+      
+      monthlyIncome.push({
+        month: monthName,
+        amount: monthTotal
+      });
+    }
+
+    // Income by source
+    const incomeBySource = {};
+    wageRecords.forEach(w => {
+      const source = w.employerId?.companyName || w.incomeSource || 'Other';
+      incomeBySource[source] = (incomeBySource[source] || 0) + w.amount;
+    });
+    
+    const incomeBySourceArray = Object.entries(incomeBySource).map(([source, amount]) => ({
+      source,
+      amount,
+      percentage: Math.round((amount / totalEarnings) * 100)
+    })).sort((a, b) => b.amount - a.amount);
+
+    // Recent wages (last 10)
+    const recentWages = wageRecords.slice(0, 10).map(w => ({
+      id: w._id,
+      amount: w.amount,
+      date: w.createdAt,
+      source: w.employerId?.companyName || w.incomeSource || 'Unknown',
+      status: w.status,
+      verified: w.verifiedOnChain || false,
+      paymentMethod: w.paymentMethod
+    }));
+
+    // Verified vs unverified breakdown
+    const verifiedTotal = wageRecords.filter(w => w.verifiedOnChain).reduce((sum, w) => sum + w.amount, 0);
+    const unverifiedTotal = wageRecords.filter(w => !w.verifiedOnChain).reduce((sum, w) => sum + w.amount, 0);
+
+    return successResponse(res, {
+      totalEarnings,
+      monthlyAverage,
+      lastPayment,
+      monthlyIncome,
+      incomeBySource: incomeBySourceArray,
+      recentWages,
+      verificationBreakdown: {
+        verified: verifiedTotal,
+        unverified: unverifiedTotal,
+        verifiedPercentage: totalEarnings > 0 ? Math.round((verifiedTotal / totalEarnings) * 100) : 0
+      },
+      bankAccounts: worker.bankAccounts || [],
+      lastUpdated: new Date()
+    });
+  } catch (error) {
+    logger.error('Get my dashboard error:', error);
+    return errorResponse(res, error.message, 500);
+  }
+};
+
+/**
+ * Get worker welfare/BPL status
+ * Returns BPL status, income breakdown with verified/unverified, eligible schemes
+ */
+export const getMyWelfareStatus = async (req, res) => {
+  try {
+    const worker = await Worker.findOne({ userId: req.user.id })
+      .populate('enrolledSchemes.schemeId');
+    
+    if (!worker) {
+      return notFoundResponse(res, 'Worker profile not found');
+    }
+
+    // Get wage records from the last 12 months
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    
+    const wageRecords = await WageRecord.find({
+      workerId: worker._id,
+      status: 'completed',
+      createdAt: { $gte: oneYearAgo }
+    }).populate('employerId', 'companyName').sort({ createdAt: -1 });
+
+    // Calculate annual income
+    const annualIncome = wageRecords.reduce((sum, w) => sum + w.amount, 0);
+    
+    // BPL threshold
+    const threshold = parseInt(process.env.BPL_THRESHOLD) || 120000;
+    const isBPL = annualIncome <= threshold;
+    const status = isBPL ? 'BPL' : 'APL';
+
+    // Income breakdown by source (verified vs unverified)
+    const incomeBreakdown = [];
+    const sourceMap = {};
+    
+    wageRecords.forEach(w => {
+      const source = w.employerId?.companyName || w.incomeSource || 'Other';
+      const isVerified = w.verifiedOnChain || false;
+      const key = `${source}-${isVerified}`;
+      
+      if (!sourceMap[key]) {
+        sourceMap[key] = {
+          source,
+          amount: 0,
+          verified: isVerified
+        };
+      }
+      sourceMap[key].amount += w.amount;
+    });
+    
+    Object.values(sourceMap).forEach(item => {
+      incomeBreakdown.push({
+        source: item.source,
+        amount: item.amount,
+        percentage: Math.round((item.amount / annualIncome) * 100) || 0,
+        verified: item.verified
+      });
+    });
+    
+    // Sort by amount
+    incomeBreakdown.sort((a, b) => b.amount - a.amount);
+
+    // Verification statistics
+    const verifiedRecords = wageRecords.filter(w => w.verifiedOnChain);
+    const unverifiedRecords = wageRecords.filter(w => !w.verifiedOnChain);
+    
+    const verifiedAmount = verifiedRecords.reduce((sum, w) => sum + w.amount, 0);
+    const unverifiedAmount = unverifiedRecords.reduce((sum, w) => sum + w.amount, 0);
+
+    // Verification history (last 5 verifications)
+    const verificationHistory = wageRecords
+      .filter(w => w.verifiedOnChain)
+      .slice(0, 5)
+      .map(w => ({
+        date: w.createdAt,
+        source: w.employerId?.companyName || w.incomeSource || 'Employer',
+        amount: w.amount,
+        transactionId: w.blockchainTxId || w.referenceNumber
+      }));
+
+    // Eligible schemes based on BPL status
+    const eligibleSchemes = isBPL ? [
+      {
+        id: 'pds',
+        name: 'Public Distribution System (PDS)',
+        description: 'Subsidized food grains distribution',
+        benefits: 'Rice at ₹3/kg, Wheat at ₹2/kg',
+        eligibility: 'BPL families'
+      },
+      {
+        id: 'pmay',
+        name: 'Pradhan Mantri Awas Yojana',
+        description: 'Housing scheme for economically weaker sections',
+        benefits: 'Up to ₹2.67 lakhs subsidy',
+        eligibility: 'Annual income below ₹3 lakhs'
+      },
+      {
+        id: 'ayushman',
+        name: 'Ayushman Bharat',
+        description: 'Health insurance scheme',
+        benefits: 'Up to ₹5 lakhs coverage per family',
+        eligibility: 'BPL and vulnerable families'
+      },
+      {
+        id: 'mgnrega',
+        name: 'MGNREGA',
+        description: 'Employment guarantee scheme',
+        benefits: '100 days of guaranteed wage employment',
+        eligibility: 'Rural households'
+      },
+      {
+        id: 'nfsa',
+        name: 'National Food Security Act',
+        description: 'Food security for priority households',
+        benefits: '5 kg of foodgrains per person per month',
+        eligibility: 'BPL families'
+      }
+    ] : [
+      {
+        id: 'pmjjby',
+        name: 'PM Jeevan Jyoti Bima Yojana',
+        description: 'Life insurance scheme',
+        benefits: '₹2 lakh life cover at ₹330/year',
+        eligibility: 'All citizens aged 18-50'
+      }
+    ];
+
+    // Amount needed to maintain BPL status
+    const amountFromThreshold = threshold - annualIncome;
+
+    return successResponse(res, {
+      status,
+      isBPL,
+      annualIncome,
+      threshold,
+      amountFromThreshold,
+      incomeBreakdown,
+      verification: {
+        verifiedAmount,
+        unverifiedAmount,
+        verifiedPercentage: annualIncome > 0 ? Math.round((verifiedAmount / annualIncome) * 100) : 0,
+        verifiedTransactions: verifiedRecords.length,
+        unverifiedTransactions: unverifiedRecords.length
+      },
+      verificationHistory,
+      eligibleSchemes,
+      enrolledSchemes: worker.enrolledSchemes || [],
+      lastClassificationDate: worker.lastClassificationDate,
+      bankAccountBalance: worker.bankAccounts?.[0]?.balance || 0,
+      lastUpdated: new Date()
+    });
+  } catch (error) {
+    logger.error('Get my welfare status error:', error);
+    return errorResponse(res, error.message, 500);
+  }
+};
+
 export default {
   createWorker,
   getWorkers,
@@ -1168,7 +1430,7 @@ export default {
   setDefaultBankAccount,
   generateQRForAccount,
   verifyQRToken,
-  depositViaQR
+  depositViaQR,
+  getMyDashboard,
+  getMyWelfareStatus
 };
-
-
