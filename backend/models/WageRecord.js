@@ -12,7 +12,7 @@ const wageRecordSchema = new mongoose.Schema({
   employerId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Employer',
-    required: true,
+    required: false, // Not required for self-declared income
     index: true
   },
   workerIdHash: {
@@ -102,8 +102,20 @@ const wageRecordSchema = new mongoose.Schema({
   // Source
   source: {
     type: String,
-    enum: ['manual', 'qr_scan', 'bulk_upload', 'api'],
+    enum: ['manual', 'qr_scan', 'bulk_upload', 'api', 'employer', 'government', 'self_declared'],
     default: 'manual'
+  },
+  
+  // Income source name (e.g., employer name, "Private Work", etc.)
+  incomeSource: {
+    type: String,
+    default: ''
+  },
+  
+  // Whether the income is verified (employer payments = verified, self-declared = unverified)
+  isVerified: {
+    type: Boolean,
+    default: false
   },
   
   // Location (optional)

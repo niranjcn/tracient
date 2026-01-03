@@ -41,6 +41,28 @@ router.put(
 );
 
 /**
+ * @route GET /api/workers/profile/dashboard
+ * @desc Get current worker's dashboard data (earnings, monthly income, income by source)
+ * @access Private (Worker)
+ */
+router.get(
+  '/profile/dashboard',
+  authenticate,
+  workerController.getMyDashboard
+);
+
+/**
+ * @route GET /api/workers/profile/welfare
+ * @desc Get current worker's welfare/BPL status
+ * @access Private (Worker)
+ */
+router.get(
+  '/profile/welfare',
+  authenticate,
+  workerController.getMyWelfareStatus
+);
+
+/**
  * @route GET /api/workers/profile/income
  * @desc Get current worker's income summary
  * @access Private (Worker)
@@ -62,6 +84,7 @@ router.get(
   validatePagination,
   workerController.getMyTransactions
 );
+
 
 /**
  * @route GET /api/workers/profile/bank-accounts

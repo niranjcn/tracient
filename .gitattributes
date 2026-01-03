@@ -1,0 +1,46 @@
+# Git Line Ending Configuration
+# This ensures consistent line endings across all platforms
+
+# Auto detect text files and normalize line endings to LF in repository
+* text=auto
+
+# Shell scripts must always use LF (Unix line endings)
+*.sh text eol=lf
+
+# PowerShell scripts use CRLF (Windows line endings)
+*.ps1 text eol=crlf
+
+# Go files use LF
+*.go text eol=lf
+
+# JavaScript/Node.js files use LF
+*.js text eol=lf
+*.json text eol=lf
+*.ts text eol=lf
+
+# Markdown files use LF
+*.md text eol=lf
+
+# YAML files use LF
+*.yaml text eol=lf
+*.yml text eol=lf
+
+# Docker files use LF
+Dockerfile text eol=lf
+*.dockerfile text eol=lf
+
+# Makefiles must use LF
+Makefile text eol=lf
+*.mk text eol=lf
+
+# Binary files (do not normalize)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.tar binary
+*.gz binary
+*.zip binary
+*.wasm binary
