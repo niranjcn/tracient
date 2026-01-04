@@ -5,7 +5,8 @@ import { Worker, UPITransaction, WageRecord, QRToken } from '../models/index.js'
 import { generateReferenceNumber } from '../utils/hash.util.js';
 import { successResponse, createdResponse, errorResponse, notFoundResponse } from '../utils/response.util.js';
 import { generatePaymentQR, validateQRToken, useQRToken } from '../services/qr.service.js';
-import { recordWagePayment } from '../services/fabric.service.js';
+import { recordWagePayment, recordUPITransaction } from '../services/fabric.service.js';
+import { isBlockchainEnabled, logBlockchainSkip } from '../config/blockchain.config.js';
 import { logger } from '../utils/logger.util.js';
 import { PAYMENT_STATUS, TRANSACTION_TYPES } from '../config/constants.js';
 
@@ -211,17 +212,25 @@ export const processUPIPayment = async (req, res) => {
     upiTransaction.completedAt = new Date();
     upiTransaction.upiRef = `UPI${Date.now()}`;
     
-    // Record on blockchain
-    const blockchainResult = await recordWagePayment({
-      workerId: worker._id,
-      workerIdHash,
-      amount,
-      referenceNumber: transactionRef
-    });
-    
-    if (blockchainResult.success) {
-      upiTransaction.blockchainTxId = blockchainResult.txHash;
-      upiTransaction.verifiedOnChain = true;
+    // Record on blockchain - Use dedicated UPI transaction function
+    let blockchainResult = { success: false };
+    if (isBlockchainEnabled()) {
+      // Record as UPI transaction on blockchain
+      blockchainResult = await recordUPITransaction({
+        txId: txId,
+        workerIdHash,
+        amount,
+        senderName: senderName || 'Anonymous',
+        senderPhone: senderPhone || '',
+        timestamp: new Date().toISOString()
+      });
+      
+      if (blockchainResult.success) {
+        upiTransaction.blockchainTxId = blockchainResult.txId;
+        upiTransaction.verifiedOnChain = true;
+      }
+    } else {
+      logBlockchainSkip('RecordUPITransaction', logger);
     }
     
     await upiTransaction.save();
@@ -229,8 +238,9 @@ export const processUPIPayment = async (req, res) => {
     // Update wage record
     wageRecord.status = PAYMENT_STATUS.COMPLETED;
     wageRecord.completedAt = new Date();
-    wageRecord.blockchainTxId = blockchainResult.txHash;
+    wageRecord.blockchainTxId = blockchainResult.txId || null;
     wageRecord.verifiedOnChain = blockchainResult.success;
+    wageRecord.syncedToBlockchain = blockchainResult.success;
     await wageRecord.save();
     
     // Update worker balance

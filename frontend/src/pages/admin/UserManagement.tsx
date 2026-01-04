@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Search,
   Plus,
   Edit2,
   Trash2,
-  UserCheck,
-  UserX,
-  Shield,
-  Download
+  Download,
+  RefreshCw,
+  Link2,
+  AlertTriangle,
+  CheckCircle2
 } from 'lucide-react';
 import { 
   Card, 
@@ -24,92 +25,29 @@ import {
   Alert
 } from '@/components/common';
 import { formatDate } from '@/utils/formatters';
+import { iamService, IAMUser } from '@/services/iamService';
+import toast from 'react-hot-toast';
 
 interface User {
   id: string;
   name: string;
   email: string;
-  phone: string;
+  phone?: string;
   role: 'worker' | 'employer' | 'government' | 'admin';
   status: 'active' | 'inactive' | 'suspended' | 'pending';
   createdAt: string;
-  lastLogin: string;
+  lastLogin?: string;
   avatar?: string;
   organization?: string;
-  verificationStatus: 'verified' | 'unverified' | 'pending';
+  idHash?: string;
+  blockchainRegistered: boolean;
+  blockchainIdentity?: {
+    permissions: string[];
+    status: string;
+    clearanceLevel?: number;
+    registeredAt?: string;
+  };
 }
-
-const mockUsers: User[] = [
-  {
-    id: 'U001',
-    name: 'Rajesh Kumar',
-    email: 'rajesh.kumar@email.com',
-    phone: '+91 98765 43210',
-    role: 'worker',
-    status: 'active',
-    createdAt: '2023-06-15',
-    lastLogin: '2024-01-15T10:30:00',
-    verificationStatus: 'verified',
-  },
-  {
-    id: 'U002',
-    name: 'ABC Construction Pvt Ltd',
-    email: 'admin@abcconstruction.com',
-    phone: '+91 11 2345 6789',
-    role: 'employer',
-    status: 'active',
-    createdAt: '2023-04-10',
-    lastLogin: '2024-01-15T09:00:00',
-    organization: 'ABC Construction Pvt Ltd',
-    verificationStatus: 'verified',
-  },
-  {
-    id: 'U003',
-    name: 'Priya Sharma',
-    email: 'priya.sharma@gov.in',
-    phone: '+91 11 9876 5432',
-    role: 'government',
-    status: 'active',
-    createdAt: '2023-08-20',
-    lastLogin: '2024-01-14T16:45:00',
-    organization: 'Ministry of Labour',
-    verificationStatus: 'verified',
-  },
-  {
-    id: 'U004',
-    name: 'Admin User',
-    email: 'admin@tracient.gov.in',
-    phone: '+91 11 1234 5678',
-    role: 'admin',
-    status: 'active',
-    createdAt: '2023-01-01',
-    lastLogin: '2024-01-15T14:30:00',
-    verificationStatus: 'verified',
-  },
-  {
-    id: 'U005',
-    name: 'Tech Solutions Ltd',
-    email: 'contact@techsolutions.com',
-    phone: '+91 80 4567 8901',
-    role: 'employer',
-    status: 'pending',
-    createdAt: '2024-01-10',
-    lastLogin: '2024-01-10T11:00:00',
-    organization: 'Tech Solutions Ltd',
-    verificationStatus: 'pending',
-  },
-  {
-    id: 'U006',
-    name: 'Amit Singh',
-    email: 'amit.singh@email.com',
-    phone: '+91 77889 90011',
-    role: 'worker',
-    status: 'suspended',
-    createdAt: '2023-09-05',
-    lastLogin: '2024-01-05T08:30:00',
-    verificationStatus: 'unverified',
-  },
-];
 
 const UserManagement: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -121,15 +59,108 @@ const UserManagement: React.FC = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
+  const [page] = useState(1);
+  const [_totalPages, setTotalPages] = useState(1);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [processingUserId, setProcessingUserId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchUsers = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      const params: Record<string, any> = {
+        page,
+        limit: 20,
+      };
+      
+      if (roleFilter !== 'all') params.role = roleFilter;
+      
+      const response = await iamService.getIAMUsers(params);
+      
+      if (response && response.users) {
+        const mappedUsers: User[] = response.users.map((u: IAMUser) => ({
+          id: u.id || u._id,
+          name: u.name,
+          email: u.email,
+          role: u.role as User['role'],
+          status: u.blockchainIdentity?.status === 'suspended' ? 'suspended' : 
+                  u.blockchainIdentity?.status === 'active' ? 'active' : 'pending',
+          createdAt: u.createdAt,
+          idHash: u.idHash,
+          blockchainRegistered: u.blockchainRegistered,
+          blockchainIdentity: u.blockchainIdentity,
+        }));
+        
+        setUsers(mappedUsers);
+        setTotalPages(response.pagination?.pages || 1);
+        setTotalUsers(response.pagination?.total || mappedUsers.length);
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch users:', err);
+      setError(err.message || 'Failed to fetch users');
+      toast.error('Failed to fetch users');
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, [page, roleFilter, searchQuery]);
 
   useEffect(() => {
-    const fetchUsers = async () => {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setUsers(mockUsers);
-      setIsLoading(false);
-    };
     fetchUsers();
-  }, []);
+  }, [fetchUsers]);
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    fetchUsers();
+  };
+
+  const handleRegisterOnBlockchain = async (user: User) => {
+    try {
+      setProcessingUserId(user.id);
+      const response = await iamService.registerUserOnBlockchain(user.id);
+      
+      if (response.success) {
+        toast.success(`${user.name} registered on blockchain`);
+        fetchUsers(); // Refresh the list
+      } else {
+        toast.error(response.error || 'Failed to register on blockchain');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to register on blockchain');
+    } finally {
+      setProcessingUserId(null);
+    }
+  };
+
+  const handleStatusChange = async (userId: string, newStatus: 'active' | 'suspended') => {
+    try {
+      setProcessingUserId(userId);
+      const response = await iamService.updateUserBlockchainStatus(userId, { status: newStatus });
+      
+      if (response.success) {
+        setUsers(prev =>
+          prev.map(u => (u.id === userId ? { ...u, status: newStatus } : u))
+        );
+        toast.success(`User status updated to ${newStatus}`);
+      } else {
+        toast.error('Failed to update status');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update status');
+    } finally {
+      setProcessingUserId(null);
+    }
+  };
+
+  const handleDeleteUser = (_userId: string) => {
+    // For now, just close the modal - implement actual delete via admin service
+    toast('User deletion requires additional confirmation');
+    setIsDeleteModalOpen(false);
+    setSelectedUser(null);
+  };
 
   const roleOptions = [
     { value: 'all', label: 'All Roles' },
@@ -150,7 +181,7 @@ const UserManagement: React.FC = () => {
   const tabs = [
     { id: 'all', label: 'All Users' },
     { id: 'active', label: 'Active' },
-    { id: 'pending', label: 'Pending Approval' },
+    { id: 'pending', label: 'Pending' },
     { id: 'suspended', label: 'Suspended' },
   ];
 
@@ -161,7 +192,7 @@ const UserManagement: React.FC = () => {
       government: { variant: 'primary' as const, label: 'Government' },
       admin: { variant: 'error' as const, label: 'Admin' },
     };
-    return config[role];
+    return config[role] || config.worker;
   };
 
   const getStatusBadge = (status: User['status']) => {
@@ -171,19 +202,7 @@ const UserManagement: React.FC = () => {
       suspended: { variant: 'error' as const, label: 'Suspended' },
       pending: { variant: 'warning' as const, label: 'Pending' },
     };
-    return config[status];
-  };
-
-  const handleStatusChange = (userId: string, newStatus: User['status']) => {
-    setUsers(prev =>
-      prev.map(u => (u.id === userId ? { ...u, status: newStatus } : u))
-    );
-  };
-
-  const handleDeleteUser = (userId: string) => {
-    setUsers(prev => prev.filter(u => u.id !== userId));
-    setIsDeleteModalOpen(false);
-    setSelectedUser(null);
+    return config[status] || config.pending;
   };
 
   const filteredUsers = users.filter(user => {
@@ -227,26 +246,29 @@ const UserManagement: React.FC = () => {
       },
     },
     {
-      key: 'verification',
-      header: 'Verification',
+      key: 'blockchain',
+      header: 'Blockchain',
       render: (user: User) => (
         <div className="flex items-center gap-1">
-          {user.verificationStatus === 'verified' ? (
-            <UserCheck className="h-4 w-4 text-green-500" />
-          ) : user.verificationStatus === 'pending' ? (
-            <Shield className="h-4 w-4 text-amber-500" />
+          {user.blockchainRegistered ? (
+            <>
+              <CheckCircle2 className="h-4 w-4 text-green-500" />
+              <span className="text-sm text-green-600">Registered</span>
+            </>
           ) : (
-            <UserX className="h-4 w-4 text-gray-400" />
+            <>
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              <span className="text-sm text-amber-600">Not Registered</span>
+            </>
           )}
-          <span className="text-sm capitalize">{user.verificationStatus}</span>
         </div>
       ),
     },
     {
-      key: 'lastLogin',
-      header: 'Last Login',
+      key: 'createdAt',
+      header: 'Created',
       render: (user: User) => (
-        <span className="text-sm text-gray-500">{formatDate(user.lastLogin)}</span>
+        <span className="text-sm text-gray-500">{formatDate(user.createdAt)}</span>
       ),
     },
     {
@@ -254,10 +276,26 @@ const UserManagement: React.FC = () => {
       header: '',
       render: (user: User) => (
         <div className="flex items-center gap-2">
+          {!user.blockchainRegistered && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleRegisterOnBlockchain(user)}
+              disabled={processingUserId === user.id}
+              title="Register on Blockchain"
+            >
+              {processingUserId === user.id ? (
+                <Spinner size="sm" />
+              ) : (
+                <Link2 className="h-4 w-4 text-blue-500" />
+              )}
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setSelectedUser(user)}
+            title="Edit User"
           >
             <Edit2 className="h-4 w-4" />
           </Button>
@@ -268,6 +306,7 @@ const UserManagement: React.FC = () => {
               setSelectedUser(user);
               setIsDeleteModalOpen(true);
             }}
+            title="Delete User"
           >
             <Trash2 className="h-4 w-4 text-red-500" />
           </Button>
@@ -276,7 +315,7 @@ const UserManagement: React.FC = () => {
     },
   ];
 
-  if (isLoading) {
+  if (isLoading && users.length === 0) {
     return (
       <div className="flex items-center justify-center h-96">
         <Spinner size="lg" />
@@ -290,9 +329,17 @@ const UserManagement: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
-          <p className="text-gray-500 mt-1">Manage system users and access permissions</p>
+          <p className="text-gray-500 mt-1">Manage system users and blockchain identities</p>
         </div>
         <div className="flex items-center gap-3">
+          <Button 
+            variant="outline" 
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
           <Button variant="outline">
             <Download className="h-4 w-4 mr-2" />
             Export
@@ -304,11 +351,18 @@ const UserManagement: React.FC = () => {
         </div>
       </div>
 
+      {/* Error Alert */}
+      {error && (
+        <Alert variant="error">
+          <p>{error}</p>
+        </Alert>
+      )}
+
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <Card>
           <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-gray-900">{users.length}</p>
+            <p className="text-2xl font-bold text-gray-900">{totalUsers}</p>
             <p className="text-sm text-gray-500">Total Users</p>
           </CardContent>
         </Card>
@@ -334,6 +388,14 @@ const UserManagement: React.FC = () => {
               {users.filter(u => u.status === 'suspended').length}
             </p>
             <p className="text-sm text-gray-500">Suspended</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold text-blue-600">
+              {users.filter(u => u.blockchainRegistered).length}
+            </p>
+            <p className="text-sm text-gray-500">On Blockchain</p>
           </CardContent>
         </Card>
       </div>
@@ -421,9 +483,12 @@ const UserManagement: React.FC = () => {
               />
               <Select
                 label="Status"
-                options={statusOptions.filter(s => s.value !== 'all')}
+                options={[
+                  { value: 'active', label: 'Active' },
+                  { value: 'suspended', label: 'Suspended' },
+                ]}
                 value={selectedUser.status}
-                onChange={(value) => handleStatusChange(selectedUser.id, value as User['status'])}
+                onChange={(value) => handleStatusChange(selectedUser.id, value as 'active' | 'suspended')}
               />
               {selectedUser.organization && (
                 <Input
@@ -439,10 +504,12 @@ const UserManagement: React.FC = () => {
                 <p className="text-sm text-gray-500">Created At</p>
                 <p className="font-medium">{formatDate(selectedUser.createdAt)}</p>
               </div>
-              <div>
-                <p className="text-sm text-gray-500">Last Login</p>
-                <p className="font-medium">{formatDate(selectedUser.lastLogin)}</p>
-              </div>
+              {selectedUser.lastLogin && (
+                <div>
+                  <p className="text-sm text-gray-500">Last Login</p>
+                  <p className="font-medium">{formatDate(selectedUser.lastLogin)}</p>
+                </div>
+              )}
             </div>
 
             {/* Actions */}

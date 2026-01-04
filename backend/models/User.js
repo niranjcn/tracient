@@ -56,6 +56,23 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  // Blockchain identity fields
+  blockchainRegistered: {
+    type: Boolean,
+    default: false
+  },
+  blockchainIdentity: {
+    userId: String,
+    role: String,
+    clearanceLevel: Number,
+    permissions: [String],
+    status: {
+      type: String,
+      enum: ['active', 'suspended', 'revoked'],
+      default: 'active'
+    },
+    registeredAt: Date
+  },
   lastLogin: Date,
   refreshToken: {
     type: String,

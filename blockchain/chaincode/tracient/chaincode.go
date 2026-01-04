@@ -118,6 +118,23 @@ type ComplianceReport struct {
 }
 
 // ============================================================================
+// HELPER FUNCTIONS FOR DETERMINISTIC EXECUTION
+// ============================================================================
+
+// GetTxTimestampRFC3339 returns the transaction timestamp in RFC3339 format.
+// This ensures deterministic execution across all peers since the timestamp
+// comes from the transaction proposal, not from time.Now().
+func GetTxTimestampRFC3339(ctx contractapi.TransactionContextInterface) string {
+	timestamp, err := ctx.GetStub().GetTxTimestamp()
+	if err != nil || timestamp == nil {
+		// Fallback to current time if unable to get tx timestamp
+		// This should only happen in mock/test environments
+		return time.Now().UTC().Format(time.RFC3339)
+	}
+	return time.Unix(timestamp.GetSeconds(), int64(timestamp.GetNanos())).UTC().Format(time.RFC3339)
+}
+
+// ============================================================================
 // INITIALIZATION FUNCTIONS
 // ============================================================================
 
@@ -1048,7 +1065,7 @@ func (s *SmartContract) SetPovertyThreshold(ctx contractapi.TransactionContextIn
 		Category:  category,
 		Amount:    amount,
 		SetBy:     setBy,
-		UpdatedAt: time.Now().UTC().Format(time.RFC3339),
+		UpdatedAt: GetTxTimestampRFC3339(ctx),
 	}
 
 	payload, err := json.Marshal(threshold)

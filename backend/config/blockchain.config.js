@@ -8,7 +8,7 @@
 
 export const blockchainConfig = {
   // Master toggle for blockchain integration
-  enabled: process.env.BLOCKCHAIN_ENABLED === 'true' || false,
+  enabled: process.env.BLOCKCHAIN_ENABLED === 'true' || process.env.FABRIC_ENABLED === 'true' || false,
   
   // Use mock responses when blockchain is disabled
   mockMode: true,

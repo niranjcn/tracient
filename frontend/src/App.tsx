@@ -57,6 +57,8 @@ const Organizations = React.lazy(() => import('./pages/admin/Organizations'));
 const NetworkTopology = React.lazy(() => import('./pages/admin/NetworkTopology'));
 const Security = React.lazy(() => import('./pages/admin/Security'));
 const AdminProfile = React.lazy(() => import('./pages/admin/Profile'));
+const BlockchainTesting = React.lazy(() => import('./pages/admin/BlockchainTesting'));
+const IdentityManagement = React.lazy(() => import('./pages/admin/IdentityManagement'));
 
 // Employer Profile
 const EmployerProfile = React.lazy(() => import('./pages/employer/Profile'));
@@ -162,10 +164,12 @@ const App: React.FC = () => {
           <Route index element={<Navigate to={ROUTES.ADMIN_DASHBOARD} replace />} />
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="users" element={<UserManagement />} />
+          <Route path="identity" element={<IdentityManagement />} />
           <Route path="system" element={<SystemHealth />} />
           <Route path="network" element={<NetworkTopology />} />
           <Route path="security" element={<Security />} />
           <Route path="organizations" element={<Organizations />} />
+          <Route path="blockchain" element={<BlockchainTesting />} />
           <Route path="profile" element={<AdminProfile />} />
         </Route>
 

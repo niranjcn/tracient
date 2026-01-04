@@ -396,6 +396,9 @@ export const processBulkTransactions = async (req, res) => {
       failed: []
     };
     
+    // Collect all successful wages for batch blockchain sync
+    const wagesForBlockchain = [];
+    
     for (const tx of transactions) {
       try {
         const worker = await Worker.findByIdHash(tx.workerIdHash);
@@ -421,7 +424,8 @@ export const processBulkTransactions = async (req, res) => {
           transactionType: TRANSACTION_TYPES.WAGE,
           status: PAYMENT_STATUS.COMPLETED,
           source: 'bulk_upload',
-          completedAt: new Date()
+          completedAt: new Date(),
+          syncedToBlockchain: false // Mark for blockchain sync
         });
         
         await worker.updateIncome(tx.amount);
@@ -433,12 +437,55 @@ export const processBulkTransactions = async (req, res) => {
           transactionId: wageRecord._id
         });
         
+        // Add to blockchain batch
+        wagesForBlockchain.push({
+          wageId: wageRecord._id,
+          workerIdHash: tx.workerIdHash,
+          employerIdHash: employer?.idHash || 'SELF_DECLARED',
+          amount: tx.amount,
+          referenceNumber,
+          description: tx.description || 'labor',
+          initiatedAt: new Date()
+        });
+        
       } catch (error) {
         results.failed.push({
           workerIdHash: tx.workerIdHash,
           error: error.message
         });
       }
+    }
+    
+    // Batch record on blockchain if enabled
+    if (isBlockchainEnabled() && wagesForBlockchain.length > 0) {
+      try {
+        const { batchRecordWages } = await import('../services/fabric.service.js');
+        const blockchainResult = await batchRecordWages(wagesForBlockchain);
+        
+        if (blockchainResult.success) {
+          // Update all wage records with blockchain status
+          const wageIds = wagesForBlockchain.map(w => w.wageId);
+          await WageRecord.updateMany(
+            { _id: { $in: wageIds } },
+            { 
+              syncedToBlockchain: true, 
+              verifiedOnChain: true,
+              blockchainTxId: `BATCH-${Date.now()}`
+            }
+          );
+          
+          logger.info('Bulk wages recorded on blockchain', { count: wagesForBlockchain.length });
+        } else {
+          logger.warn('Bulk blockchain recording failed, will retry via sync service', { 
+            error: blockchainResult.error 
+          });
+        }
+      } catch (blockchainError) {
+        logger.error('Bulk blockchain recording error:', blockchainError.message);
+        // Don't fail the operation - sync service will handle it
+      }
+    } else if (!isBlockchainEnabled()) {
+      logBlockchainSkip('BatchRecordWages', logger);
     }
     
     logger.info('Bulk transactions processed', {
