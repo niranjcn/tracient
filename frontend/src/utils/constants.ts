@@ -60,6 +60,7 @@ export const ROUTES = {
   // Admin routes
   ADMIN_DASHBOARD: '/admin/dashboard',
   ADMIN_USERS: '/admin/users',
+  ADMIN_IDENTITY: '/admin/identity',
   ADMIN_ORGANIZATIONS: '/admin/organizations',
   ADMIN_SYSTEM: '/admin/system',
   ADMIN_LOGS: '/admin/logs',

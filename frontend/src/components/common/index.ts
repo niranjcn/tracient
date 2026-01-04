@@ -17,6 +17,10 @@ export { default as EmptyState } from './EmptyState';
 export { default as ErrorBoundary } from './ErrorBoundary';
 export { default as Switch } from './Switch';
 
+// Blockchain Components
+export { default as BlockchainStatus } from './BlockchainStatus';
+export { default as VerificationBadge, VerificationIcon } from './VerificationBadge';
+
 // Re-export types
 export type { ButtonProps } from './Button';
 export type { InputProps } from './Input';

@@ -159,8 +159,16 @@ func (s *SmartContract) LogAccess(ctx contractapi.TransactionContextInterface, e
 	// Determine risk level
 	riskLevel := DetermineRiskLevel(eventType, function, status)
 
-	// Generate unique log ID
-	timestamp := time.Now().UTC()
+	// Generate unique log ID using deterministic transaction timestamp
+	// This ensures all peers produce the same log entry
+	txTimestamp, err := ctx.GetStub().GetTxTimestamp()
+	var timestamp time.Time
+	if err != nil || txTimestamp == nil {
+		// Fallback only for testing environments
+		timestamp = time.Now().UTC()
+	} else {
+		timestamp = time.Unix(txTimestamp.GetSeconds(), int64(txTimestamp.GetNanos())).UTC()
+	}
 	txID := ctx.GetStub().GetTxID()
 	logID := fmt.Sprintf("AUDIT_%s_%s", timestamp.Format("20060102150405"), txID[:8])
 

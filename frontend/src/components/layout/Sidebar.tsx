@@ -20,7 +20,8 @@ import {
   Heart,
   X,
   UsersRound,
-  CreditCard
+  CreditCard,
+  Database
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/utils/helpers';
@@ -74,10 +75,12 @@ const getNavItems = (role: UserRole): NavItem[] => {
       return [
         { label: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard' },
         { label: 'User Management', icon: Users, path: '/admin/users' },
+        { label: 'Identity & Access', icon: Shield, path: '/admin/identity' },
         { label: 'Organizations', icon: Building2, path: '/admin/organizations' },
         { label: 'System Health', icon: Server, path: '/admin/system' },
         { label: 'Network Topology', icon: Activity, path: '/admin/network' },
-        { label: 'Security', icon: Shield, path: '/admin/security' },
+        { label: 'Blockchain', icon: Database, path: '/admin/blockchain' },
+        { label: 'Security', icon: Settings, path: '/admin/security' },
         { label: 'Send Payment', icon: QrCode, path: '/scan-qr' },
       ];
     default:

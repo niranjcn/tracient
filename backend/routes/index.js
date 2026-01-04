@@ -13,6 +13,7 @@ import adminRoutes from './admin.routes.js';
 import analyticsRoutes from './analytics.routes.js';
 import blockchainRoutes from './blockchain.routes.js';
 import familyRoutes from './family.routes.js';
+import iamRoutes from './iam.routes.js';
 
 const router = Router();
 
@@ -38,5 +39,6 @@ router.use('/admin', adminRoutes);
 router.use('/analytics', analyticsRoutes);
 router.use('/blockchain', blockchainRoutes);
 router.use('/family', familyRoutes);
+router.use('/iam', iamRoutes);
 
 export default router;

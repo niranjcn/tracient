@@ -6,7 +6,7 @@ import { generateTokens, verifyRefreshToken, generateResetToken } from '../utils
 import { generateIdHash, hashPassword, comparePassword } from '../utils/hash.util.js';
 import { successResponse, createdResponse, errorResponse, unauthorizedResponse } from '../utils/response.util.js';
 import { sendWelcomeEmail, sendPasswordResetEmail } from '../services/email.service.js';
-import { registerWorkerOnChain } from '../services/fabric.service.js';
+import { registerWorkerOnChain, registerUserOnChain } from '../services/fabric.service.js';
 import { syncFamilyMemberCount } from '../services/family-sync.service.js';
 import { logger } from '../utils/logger.util.js';
 import { ROLES } from '../config/constants.js';
@@ -35,6 +35,9 @@ export const register = async (req, res) => {
       if (existingIdHash) {
         return errorResponse(res, 'Aadhaar number already registered', 409);
       }
+    } else {
+      // Generate idHash from email for non-worker roles without Aadhaar
+      idHash = generateIdHash(email + Date.now().toString());
     }
     
     // Create user
@@ -58,8 +61,9 @@ export const register = async (req, res) => {
       }
     }
     
-    // Create role-specific profile
+    // Create role-specific profile and blockchain identity
     let profile = null;
+    let blockchainIdentity = null;
     
     switch (role) {
       case ROLES.WORKER:
@@ -78,7 +82,25 @@ export const register = async (req, res) => {
         
         // Register on blockchain (only if enabled)
         if (idHash && isBlockchainEnabled()) {
-          registerWorkerOnChain({ idHash, name, registeredAt: new Date() });
+          // Use the new registerUserOnChain for consistent identity management
+          const result = await registerUserOnChain({
+            userId: user._id,
+            idHash,
+            name,
+            role: 'worker',
+            email,
+            phone,
+            state: additionalData.state,
+            district: additionalData.district,
+            registeredAt: new Date()
+          });
+          if (result.success) {
+            blockchainIdentity = result.blockchainIdentity;
+            // Store blockchain registration status
+            user.blockchainRegistered = true;
+            user.blockchainIdentity = result.blockchainIdentity;
+            await user.save();
+          }
         } else if (idHash) {
           logBlockchainSkip('RegisterWorker', logger);
         }
@@ -93,6 +115,30 @@ export const register = async (req, res) => {
           phone,
           ...additionalData
         });
+        
+        // Register employer on blockchain
+        if (idHash && isBlockchainEnabled()) {
+          const result = await registerUserOnChain({
+            userId: user._id,
+            idHash,
+            name,
+            role: 'employer',
+            email,
+            phone,
+            companyName: additionalData.companyName || name,
+            state: additionalData.state,
+            district: additionalData.district,
+            registeredAt: new Date()
+          });
+          if (result.success) {
+            blockchainIdentity = result.blockchainIdentity;
+            user.blockchainRegistered = true;
+            user.blockchainIdentity = result.blockchainIdentity;
+            await user.save();
+          }
+        } else {
+          logBlockchainSkip('RegisterEmployer', logger);
+        }
         break;
         
       case ROLES.GOVERNMENT:
@@ -106,6 +152,32 @@ export const register = async (req, res) => {
           employeeId: additionalData.employeeId || `GOV${Date.now()}`,
           ...additionalData
         });
+        
+        // Register government official on blockchain
+        if (idHash && isBlockchainEnabled()) {
+          const result = await registerUserOnChain({
+            userId: user._id,
+            idHash,
+            name,
+            role: 'government',
+            email,
+            phone,
+            department: additionalData.department || 'General',
+            designation: additionalData.designation || 'Official',
+            employeeId: additionalData.employeeId || `GOV${Date.now()}`,
+            state: additionalData.state,
+            district: additionalData.district,
+            registeredAt: new Date()
+          });
+          if (result.success) {
+            blockchainIdentity = result.blockchainIdentity;
+            user.blockchainRegistered = true;
+            user.blockchainIdentity = result.blockchainIdentity;
+            await user.save();
+          }
+        } else {
+          logBlockchainSkip('RegisterGovernment', logger);
+        }
         break;
         
       case ROLES.ADMIN:
@@ -117,6 +189,28 @@ export const register = async (req, res) => {
           employeeId: additionalData.employeeId || `ADM${Date.now()}`,
           ...additionalData
         });
+        
+        // Register admin on blockchain
+        if (idHash && isBlockchainEnabled()) {
+          const result = await registerUserOnChain({
+            userId: user._id,
+            idHash,
+            name,
+            role: 'admin',
+            email,
+            phone,
+            employeeId: additionalData.employeeId || `ADM${Date.now()}`,
+            registeredAt: new Date()
+          });
+          if (result.success) {
+            blockchainIdentity = result.blockchainIdentity;
+            user.blockchainRegistered = true;
+            user.blockchainIdentity = result.blockchainIdentity;
+            await user.save();
+          }
+        } else {
+          logBlockchainSkip('RegisterAdmin', logger);
+        }
         break;
     }
     
@@ -133,7 +227,7 @@ export const register = async (req, res) => {
     // Send welcome email
     sendWelcomeEmail(user);
     
-    logger.info('User registered', { userId: user._id, role });
+    logger.info('User registered', { userId: user._id, role, blockchainRegistered: !!blockchainIdentity });
     
     return createdResponse(res, {
       user: {
@@ -144,6 +238,7 @@ export const register = async (req, res) => {
         idHash: user.idHash
       },
       profile: profile ? { id: profile._id } : null,
+      blockchainIdentity,
       ...tokens
     }, 'Registration successful');
     
