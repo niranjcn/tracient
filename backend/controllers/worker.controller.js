@@ -1052,10 +1052,28 @@ export const verifyQRToken = async (req, res) => {
  */
 export const depositViaQR = async (req, res) => {
   try {
-    const { token, amount, payerName = 'Anonymous' } = req.body;
+    const { 
+      token, 
+      amount, 
+      payerName = 'Anonymous',
+      payerPhone,
+      payerIdHash,
+      payerAccountId 
+    } = req.body;
+
+    console.log('=== QR Deposit Request ===');
+    console.log('Amount:', amount);
+    console.log('Payer Name:', payerName);
+    console.log('Payer ID Hash:', payerIdHash);
+    console.log('Payer Account ID:', payerAccountId);
 
     if (!token || !amount) {
       return errorResponse(res, 'Token and amount are required', 400);
+    }
+    
+    // Require sender account information
+    if (!payerIdHash || !payerAccountId) {
+      return errorResponse(res, 'Sender account information required. Please log in to make payments.', 401);
     }
 
     // Decode QR token
@@ -1069,15 +1087,15 @@ export const depositViaQR = async (req, res) => {
 
     const { workerIdHash, accountId } = qrData;
 
-    // Find worker and account
-    const worker = await Worker.findOne({ idHash: workerIdHash });
-    if (!worker) {
-      return errorResponse(res, 'Worker not found', 404);
+    // Find receiver (worker) and account
+    const receiver = await Worker.findOne({ idHash: workerIdHash });
+    if (!receiver) {
+      return errorResponse(res, 'Receiver not found', 404);
     }
 
-    const account = worker.bankAccounts?.id(accountId);
-    if (!account) {
-      return errorResponse(res, 'Bank account not found', 404);
+    const receiverAccount = receiver.bankAccounts?.id(accountId);
+    if (!receiverAccount) {
+      return errorResponse(res, 'Receiver bank account not found', 404);
     }
 
     // Check QR expiry
@@ -1091,74 +1109,121 @@ export const depositViaQR = async (req, res) => {
       return errorResponse(res, 'Invalid amount. Must be between 1 and 1000000', 400);
     }
 
-    // Update balance
-    const previousBalance = account.balance || 0;
-    account.balance = previousBalance + amount;
-    account.balanceLastUpdated = new Date();
+    // Find sender (now required)
+    const sender = await Worker.findOne({ idHash: payerIdHash });
+    if (!sender) {
+      return errorResponse(res, 'Sender account not found. Please log in again.', 404);
+    }
+
+    const senderAccount = sender.bankAccounts?.id(payerAccountId);
+    if (!senderAccount) {
+      return errorResponse(res, 'Sender bank account not found', 404);
+    }
+    
+    const senderPreviousBalance = senderAccount.balance || 0;
+    
+    // Check sufficient funds
+    if (senderPreviousBalance < amount) {
+      return errorResponse(res, `Insufficient funds. Your balance: ₹${senderPreviousBalance.toFixed(2)}, Required: ₹${amount.toFixed(2)}`, 400);
+    }
+    
+    // Deduct from sender
+    senderAccount.balance = senderPreviousBalance - amount;
+    senderAccount.balanceLastUpdated = new Date();
+    
+    // Update sender's total (reduce)
+    sender.balance = (sender.balance || 0) - amount;
+    
+    await sender.save();
+    
+    logger.info('Debited sender account', {
+      senderId: sender._id,
+      amount: amount,
+      newBalance: senderAccount.balance,
+      previousBalance: senderPreviousBalance
+    });
+
+    // Update receiver balance
+    const receiverPreviousBalance = receiverAccount.balance || 0;
+    receiverAccount.balance = receiverPreviousBalance + amount;
+    receiverAccount.balanceLastUpdated = new Date();
 
     // Update monthly income
-    if (!account.monthlyIncome) {
-      account.monthlyIncome = 0;
+    if (!receiverAccount.monthlyIncome) {
+      receiverAccount.monthlyIncome = 0;
     }
-    account.monthlyIncome += amount;
+    receiverAccount.monthlyIncome += amount;
 
-    // Update worker total earnings
-    worker.totalEarnings = (worker.totalEarnings || 0) + amount;
-    worker.balance = (worker.balance || 0) + amount;
+    // Update receiver total earnings
+    receiver.totalEarnings = (receiver.totalEarnings || 0) + amount;
+    receiver.balance = (receiver.balance || 0) + amount;
 
-    await worker.save();
+    await receiver.save();
 
     // Create transaction record
     const transactionId = `TXN-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
     
     const transaction = await UPITransaction.create({
       txId: transactionId,
-      workerId: worker._id,
+      workerId: receiver._id,
       workerHash: workerIdHash,
-      workerName: worker.name,
-      workerAccount: account.accountNumber,
-      payerName: payerName,
+      workerName: receiver.name,
+      workerAccount: receiverAccount.accountNumber,
+      senderName: sender.name,
+      senderPhone: payerPhone || sender.phone,
+      senderAccount: senderAccount.accountNumber,
       amount: amount,
-      status: 'success',
-      paymentMethod: 'QR_SCAN',
-      bankName: account.bankName,
-      ifscCode: account.ifscCode,
-      timestamp: new Date()
+      status: 'completed',
+      mode: 'QR_SCAN',
+      timestamp: new Date(),
+      completedAt: new Date()
     });
 
     // Log audit trail
     await AuditLog.log({
       action: 'payment_received',
       category: 'transaction',
-      userId: worker.userId,
+      userId: receiver.userId,
       resourceType: 'Worker',
-      resourceId: worker._id,
+      resourceId: receiver._id,
       details: {
         amount: amount,
         transactionId: transactionId,
-        paymentMethod: 'QR_SCAN'
+        paymentMethod: 'QR_SCAN',
+        senderId: sender._id,
+        senderBalance: senderAccount.balance
       }
     });
 
-    logger.info('Payment via QR received', {
-      workerId: worker._id,
+    logger.info('Payment via QR completed', {
+      receiverId: receiver._id,
+      senderId: sender._id,
       transactionId: transactionId,
       amount: amount,
-      accountNumber: account.accountNumber.slice(-4)
+      receiverAccount: receiverAccount.accountNumber.slice(-4)
     });
 
     return successResponse(res, {
       transactionId: transactionId,
       amount: amount,
-      bankName: account.bankName,
-      accountHolderName: account.accountHolderName,
-      newBalance: account.balance,
-      previousBalance: previousBalance,
+      bankName: receiverAccount.bankName,
+      accountHolderName: receiverAccount.accountHolderName,
+      newBalance: receiverAccount.balance,
+      previousBalance: receiverPreviousBalance,
       timestamp: new Date().toISOString(),
-      accountNumber: `****${account.accountNumber.slice(-4)}`
+      accountNumber: `****${receiverAccount.accountNumber.slice(-4)}`,
+      sender: {
+        name: sender.name,
+        debited: true,
+        newBalance: senderAccount.balance,
+        previousBalance: senderPreviousBalance
+      }
     }, 'Payment successful');
 
   } catch (error) {
+    console.error('=== QR Deposit Error ===');
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
     logger.error('Deposit via QR error:', error);
     return errorResponse(res, error.message, 500);
   }

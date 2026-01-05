@@ -10,13 +10,27 @@ const api: AxiosInstance = axios.create({
   },
 });
 
+// Public endpoints that should NOT include auth headers
+const PUBLIC_ENDPOINTS = [
+  'workers/qr/verify',
+  'workers/qr/deposit'
+];
+
 // Request interceptor - Add auth token
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    // Check for 'accessToken' which is what AuthContext stores
-    const token = localStorage.getItem('accessToken');
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
+    // Check if this is a public endpoint that should not have auth headers
+    const url = config.url || '';
+    const isPublicEndpoint = PUBLIC_ENDPOINTS.some(endpoint => 
+      url.includes(endpoint)
+    );
+    
+    // Only add Authorization header for non-public endpoints
+    if (!isPublicEndpoint) {
+      const token = localStorage.getItem('accessToken');
+      if (token && config.headers) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
     return config;
   },
@@ -29,17 +43,30 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response.data,
   (error: AxiosError) => {
+    const requestUrl = error.config?.url || '';
+    
+    // Check if this was a request to a public endpoint
+    const isPublicEndpoint = PUBLIC_ENDPOINTS.some(endpoint => 
+      requestUrl.includes(endpoint)
+    );
+    
     if (error.response?.status === 401) {
-      // Token expired or invalid - remove all auth tokens
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+      // Only redirect to login if this is NOT a public endpoint
+      if (!isPublicEndpoint) {
+        // Token expired or invalid - remove all auth tokens
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+      }
+      // For public endpoints, just let the error propagate without redirect
     }
     
     if (error.response?.status === 403) {
-      // Forbidden - redirect to unauthorized
-      window.location.href = '/unauthorized';
+      // Forbidden - redirect to unauthorized (only for non-public endpoints)
+      if (!isPublicEndpoint) {
+        window.location.href = '/unauthorized';
+      }
     }
 
     // Extract error message

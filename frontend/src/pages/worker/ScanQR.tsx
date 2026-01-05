@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Smartphone, QrCode, AlertCircle, CheckCircle, ArrowRight, Camera } from 'lucide-react';
 import { Button, Card, Alert, Input } from '@/components/common';
 import { toast } from 'react-hot-toast';
@@ -20,6 +20,13 @@ interface DepositResponse {
   bankName: string;
   accountHolderName: string;
   newBalance: number;
+  sender?: {
+    name: string;
+    debited: boolean;
+    newBalance?: number;
+    previousBalance?: number;
+    note?: string;
+  };
 }
 
 export default function ScanQRPage() {
@@ -31,10 +38,51 @@ export default function ScanQRPage() {
   const [depositResult, setDepositResult] = useState<DepositResponse | null>(null);
   const [showCamera, setShowCamera] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  
+  // Auto-loaded sender account info
+  const [myAccountInfo, setMyAccountInfo] = useState<any>(null);
 
   const amountInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+
+  // Auto-load logged-in user's account info
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      try {
+        const userStr = localStorage.getItem('user');
+        const token = localStorage.getItem('accessToken');
+        
+        if (userStr && token) {
+          const user = JSON.parse(userStr);
+          
+          // Only fetch if user is a worker
+          if (user.role === 'worker') {
+            const response = await api.get('/workers/profile');
+            if (response.data) {
+              const worker = response.data;
+              const defaultAccount = worker.bankAccounts?.find((acc: any) => acc.isDefault) || worker.bankAccounts?.[0];
+              
+              if (defaultAccount && worker.idHash) {
+                setMyAccountInfo({
+                  idHash: worker.idHash,
+                  accountId: defaultAccount._id,
+                  workerName: worker.name,
+                  phone: worker.phone || '',
+                  balance: defaultAccount.balance || 0
+                });
+              }
+            }
+          }
+        }
+      } catch (error) {
+        // Silently fail - user might not be logged in or not a worker
+        console.log('Could not auto-load user profile:', error);
+      }
+    };
+
+    loadUserProfile();
+  }, []);
 
   const startCamera = async () => {
     try {
@@ -109,17 +157,20 @@ export default function ScanQRPage() {
       console.error('Error details:', {
         message: error.message,
         response: error.response,
+        status: error.response?.status,
         token: token.substring(0, 20) + '...'
       });
       
       // More specific error messages
-      if (error.message.includes('Invalid QR token')) {
+      if (error.response?.status === 401) {
+        toast.error('Authentication error. This QR code cannot be verified. Please generate a new one.');
+      } else if (error.message.includes('Invalid QR token')) {
         toast.error('Invalid QR code format. Please check and try again.');
       } else if (error.message.includes('expired')) {
         toast.error('QR code has expired. Please generate a new one.');
       } else if (error.message.includes('not found')) {
         toast.error('Worker or account not found. Please verify the QR code.');
-      } else if (error.message.includes('Network')) {
+      } else if (error.message.includes('Network') || error.code === 'ERR_NETWORK') {
         toast.error('Cannot connect to server. Please check your connection.');
       } else {
         toast.error(error.message || 'Failed to verify QR code. Please try again.');
@@ -139,19 +190,71 @@ export default function ScanQRPage() {
       toast.error('Payment details missing');
       return;
     }
+    
+    // Check if user is logged in with account info
+    if (!myAccountInfo) {
+      toast.error('Please log in as a worker to make payments');
+      return;
+    }
+    
+    const paymentAmount = parseFloat(amount);
+    
+    // Check sufficient balance
+    if (myAccountInfo.balance < paymentAmount) {
+      toast.error(`Insufficient balance. Your balance: ₹${myAccountInfo.balance.toFixed(2)}, Required: ₹${paymentAmount.toFixed(2)}`);
+      return;
+    }
 
     setLoading(true);
     try {
-      const response = await api.post('/workers/qr/deposit', {
+      // Always include account deduction info
+      const payload = {
         token: qrToken.trim(),
-        amount: parseFloat(amount)
+        amount: paymentAmount,
+        payerName: myAccountInfo.workerName,
+        payerPhone: myAccountInfo.phone,
+        payerIdHash: myAccountInfo.idHash,
+        payerAccountId: myAccountInfo.accountId
+      };
+      
+      console.log('Making payment with account deduction:', {
+        sender: myAccountInfo.workerName,
+        amount: paymentAmount,
+        senderBalance: myAccountInfo.balance
       });
+      
+      const response = await api.post('/workers/qr/deposit', payload);
 
       setDepositResult(response.data);
+      
+      // Update local balance
+      setMyAccountInfo({
+        ...myAccountInfo,
+        balance: response.data.sender?.newBalance || (myAccountInfo.balance - paymentAmount)
+      });
+      
       toast.success('Payment successful!');
     } catch (error: any) {
       console.error('Error making payment:', error);
-      toast.error(error.message || 'Payment failed');
+      console.error('Payment error details:', {
+        message: error.message,
+        response: error.response,
+        status: error.response?.status,
+        amount: amount
+      });
+      
+      // Specific error handling for deposit
+      if (error.response?.status === 401) {
+        toast.error('Authentication error. Cannot process payment. Please generate a new QR code.');
+      } else if (error.message.includes('Invalid QR token') || error.message.includes('expired')) {
+        toast.error('QR code is invalid or expired. Please generate a new one.');
+      } else if (error.message.includes('Insufficient')) {
+        toast.error('Insufficient funds to process this payment.');
+      } else if (error.message.includes('Network') || error.code === 'ERR_NETWORK') {
+        toast.error('Cannot connect to server. Please check your connection and try again.');
+      } else {
+        toast.error(error.message || 'Payment failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -360,15 +463,28 @@ export default function ScanQRPage() {
                 <p className="text-xs text-gray-500 mt-1">Minimum ₹1</p>
               </div>
 
-              {/* Payment Methods Info */}
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-sm text-blue-900">
-                  <strong>Payment Method:</strong> Mock UPI Transfer
-                </p>
-                <p className="text-xs text-blue-800 mt-1">
-                  This simulates a UPI payment. All transactions are recorded on the blockchain.
-                </p>
-              </div>
+              {/* Account Balance Display */}
+              {myAccountInfo && (
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-900">
+                    <strong>Your Balance:</strong> ₹{myAccountInfo.balance.toFixed(2)}
+                  </p>
+                  <p className="text-xs text-blue-800 mt-1">
+                    {myAccountInfo.workerName} • Amount will be deducted from your account
+                  </p>
+                </div>
+              )}
+              
+              {!myAccountInfo && (
+                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-sm text-yellow-900">
+                    <strong>⚠️ Login Required</strong>
+                  </p>
+                  <p className="text-xs text-yellow-800 mt-1">
+                    Please log in as a worker to make payments
+                  </p>
+                </div>
+              )}
 
               {/* Buttons */}
               <div className="flex gap-3">
@@ -382,10 +498,10 @@ export default function ScanQRPage() {
                 <Button
                   onClick={handleMakePayment}
                   isLoading={loading}
-                  disabled={!amount || parseFloat(amount) <= 0 || loading}
+                  disabled={!amount || parseFloat(amount) <= 0 || loading || !myAccountInfo}
                   className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3"
                 >
-                  Send ₹{amount || '0'}
+                  {!myAccountInfo ? 'Login Required' : `Send ₹${amount || '0'}`}
                 </Button>
               </div>
             </Card>
@@ -413,6 +529,34 @@ export default function ScanQRPage() {
                     <span className="text-gray-600">Transaction ID</span>
                     <span className="font-mono text-sm text-gray-900">{depositResult.transactionId}</span>
                   </div>
+                  
+                  {/* Sender Info */}
+                  {depositResult.sender && (
+                    <>
+                      <div className="flex justify-between pt-3">
+                        <span className="text-gray-600">Sender</span>
+                        <span className="font-semibold text-gray-900">{depositResult.sender.name}</span>
+                      </div>
+                      {depositResult.sender.debited && (
+                        <>
+                          <div className="flex justify-between pt-3">
+                            <span className="text-gray-600">Amount Debited</span>
+                            <span className="font-bold text-red-600">-{formatCurrency(depositResult.amount)}</span>
+                          </div>
+                          <div className="flex justify-between pt-3">
+                            <span className="text-gray-600">Sender New Balance</span>
+                            <span className="font-semibold text-gray-900">{formatCurrency(depositResult.sender.newBalance)}</span>
+                          </div>
+                        </>
+                      )}
+                      {!depositResult.sender.debited && depositResult.sender.note && (
+                        <div className="pt-3">
+                          <span className="text-xs text-gray-500 italic">{depositResult.sender.note}</span>
+                        </div>
+                      )}
+                    </>
+                  )}
+                  
                   <div className="flex justify-between pt-3">
                     <span className="text-gray-600">Recipient</span>
                     <span className="font-semibold text-gray-900">{depositResult.accountHolderName}</span>
@@ -422,12 +566,8 @@ export default function ScanQRPage() {
                     <span className="font-semibold text-gray-900">{depositResult.bankName}</span>
                   </div>
                   <div className="flex justify-between pt-3">
-                    <span className="text-gray-600">Amount Sent</span>
-                    <span className="font-bold text-lg text-gray-900">{formatCurrency(depositResult.amount)}</span>
-                  </div>
-                  <div className="flex justify-between pt-3">
-                    <span className="text-gray-600">New Account Balance</span>
-                    <span className="font-bold text-lg text-green-600">{formatCurrency(depositResult.newBalance)}</span>
+                    <span className="text-gray-600">Amount Credited</span>
+                    <span className="font-bold text-lg text-green-600">+{formatCurrency(depositResult.amount)}</span>
                   </div>
                 </div>
               </div>
@@ -435,7 +575,9 @@ export default function ScanQRPage() {
               {/* Next Steps */}
               <Alert variant="success">
                 <CheckCircle size={20} />
-                <span>Payment recorded on blockchain. The worker can view this transaction in their history.</span>
+                <span>
+                  Transaction complete! Amount debited from your account and credited to recipient.
+                </span>
               </Alert>
 
               {/* Button */}
