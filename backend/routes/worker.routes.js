@@ -205,6 +205,56 @@ router.get(
   workerController.getWorkerByIdHash
 );
 
+// ============================================================================
+// QR CODE ROUTES - MUST BE DEFINED BEFORE /:id ROUTES TO AVOID CONFLICTS
+// ============================================================================
+
+/**
+ * @route POST /api/workers/qr/generate
+ * @desc Generate QR code for bank account
+ * @access Private (Worker)
+ */
+router.post(
+  '/qr/generate',
+  authenticate,
+  body('accountId').notEmpty().withMessage('Account ID is required'),
+  validate,
+  workerController.generateQRForAccount
+);
+
+/**
+ * @route POST /api/workers/qr/verify
+ * @desc Verify QR token and get recipient details
+ * @access Public
+ */
+router.post(
+  '/qr/verify',
+  body('token').notEmpty().withMessage('QR token is required'),
+  validate,
+  workerController.verifyQRToken
+);
+
+/**
+ * @route POST /api/workers/qr/deposit
+ * @desc Process payment deposit via QR code
+ * @access Public
+ */
+router.post(
+  '/qr/deposit',
+  body('token').notEmpty().withMessage('QR token is required'),
+  body('amount').isFloat({ min: 1 }).withMessage('Amount must be greater than 0'),
+  body('payerName').notEmpty().withMessage('Payer name is required'),
+  body('payerIdHash').notEmpty().withMessage('Sender account required - please log in'),
+  body('payerAccountId').notEmpty().withMessage('Sender account required - please log in'),
+  body('payerPhone').optional().isString(),
+  validate,
+  workerController.depositViaQR
+);
+
+// ============================================================================
+// WORKER ID ROUTES - These use /:id parameter, must come AFTER specific routes
+// ============================================================================
+
 /**
  * @route GET /api/workers/:id
  * @desc Get worker by ID
@@ -267,45 +317,6 @@ router.get(
   validateObjectId('id'),
   validatePagination,
   workerController.getWorkerTransactions
-);
-
-/**
- * @route POST /api/workers/qr/generate
- * @desc Generate QR code for bank account
- * @access Private (Worker)
- */
-router.post(
-  '/qr/generate',
-  authenticate,
-  body('accountId').notEmpty().withMessage('Account ID is required'),
-  validate,
-  workerController.generateQRForAccount
-);
-
-/**
- * @route POST /api/workers/qr/verify
- * @desc Verify QR token and get recipient details
- * @access Public
- */
-router.post(
-  '/qr/verify',
-  body('token').notEmpty().withMessage('QR token is required'),
-  validate,
-  workerController.verifyQRToken
-);
-
-/**
- * @route POST /api/workers/qr/deposit
- * @desc Process payment deposit via QR code
- * @access Public
- */
-router.post(
-  '/qr/deposit',
-  body('token').notEmpty().withMessage('QR token is required'),
-  body('amount').isFloat({ min: 1 }).withMessage('Amount must be greater than 0'),
-  body('payerName').optional().isString(),
-  validate,
-  workerController.depositViaQR
 );
 
 /**
